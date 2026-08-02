@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NAO STOCK · 3D 상관관계</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Cormorant+Garamond:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{--paper:#e8e3d6;--ink:#1b1917;--ink-soft:#6d6659;--ox:#7a2018;--down:#3a4a63;--sage:#5c6b4a;--rule:#c3bcac}
+  *{margin:0;box-sizing:border-box}
+  body{background:var(--paper);color:var(--ink);font-family:'Cormorant Garamond',serif;overflow:hidden}
+  #c{display:block;width:100vw;height:100vh;cursor:grab}#c:active{cursor:grabbing}
+  .hd{position:fixed;top:16px;left:20px;z-index:10}
+  .hd .t{font-family:'Cinzel',serif;font-weight:700;font-size:17px;letter-spacing:.24em}
+  .hd .s{font-family:'Cinzel',serif;font-size:9px;letter-spacing:.28em;color:var(--ink-soft);text-transform:uppercase;margin-top:3px}
+  .legend{position:fixed;bottom:16px;left:20px;z-index:10;font-size:14px;line-height:1.6;color:var(--ink-soft)}
+  .legend b{color:var(--ink)}
+  .legend .sw{display:inline-block;width:16px;height:2px;vertical-align:middle;margin-right:6px}
+  .status{position:fixed;top:16px;right:20px;z-index:10;font-family:'Cinzel',serif;font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-soft)}
+  .hint{position:fixed;bottom:16px;right:20px;z-index:10;font-family:'Cinzel',serif;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:#9a9384}
+</style>
+</head>
+<body>
+  <div class="hd"><div class="t">NAO · 3D 상관관계</div><div class="s">Return Correlation · Delta Clustering</div></div>
+  <div class="status" id="status">불러오는 중…</div>
+  <div class="legend">
+    <div><b>가까울수록</b> 함께 움직이는 종목 (분산투자 약함)</div>
+    <div><span class="sw" style="background:#7a2018"></span>같은 방향(양의 상관) &nbsp; <span class="sw" style="background:#3a4a63"></span>반대 방향(음의 상관)</div>
+  </div>
+  <div class="hint">드래그=회전 · 휠=확대</div>
+  <canvas id="c"></canvas>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const PAPER=0xe8e3d6, OX=0x7a2018, DOWN=0x3a4a63, SAGE=0x5c6b4a, INK=0x1b1917;
+const canvas=document.getElementById('c');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
+renderer.setPixelRatio(window.devicePixelRatio);
+function resize(){renderer.setSize(window.innerWidth,window.innerHeight);cam.aspect=window.innerWidth/window.innerHeight;cam.updateProjectionMatrix();}
+const scene=new THREE.Scene();scene.background=new THREE.Color(PAPER);
+const cam=new THREE.PerspectiveCamera(50,1,0.1,100);cam.position.set(0,0,9);
+const group=new THREE.Group();scene.add(group);
+window.addEventListener('resize',resize);
+
+function label(text){
+  const cv=document.createElement('canvas');cv.width=256;cv.height=64;
+  const x=cv.getContext('2d');x.fillStyle='#1b1917';x.font='600 30px Cinzel, serif';x.textAlign='center';x.textBaseline='middle';
+  x.fillText(text,128,32);
+  const tex=new THREE.CanvasTexture(cv);tex.needsUpdate=true;
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true}));
+  sp.scale.set(2.2,0.55,1);return sp;
+}
+
+fetch('/api/correlation').then(r=>r.json()).then(d=>{
+  document.getElementById('status').textContent=(d.live?'● 실데이터 · KIS':'○ 예시(합성)');
+  const S=4.2;
+  const pos=d.nodes.map(n=>new THREE.Vector3(n.x*S,n.y*S,n.z*S));
+  // 엣지
+  d.edges.forEach(e=>{if(Math.abs(e.corr)<0.15)return;
+    const g=new THREE.BufferGeometry().setFromPoints([pos[e.a],pos[e.b]]);
+    const m=new THREE.LineBasicMaterial({color:e.corr>=0?OX:DOWN,transparent:true,opacity:0.15+Math.min(0.6,Math.abs(e.corr)*0.7)});
+    group.add(new THREE.Line(g,m));});
+  // 노드 + 라벨
+  d.nodes.forEach((n,i)=>{
+    const mesh=new THREE.Mesh(new THREE.SphereGeometry(0.28,24,24),new THREE.MeshBasicMaterial({color:i===0?OX:SAGE}));
+    mesh.position.copy(pos[i]);group.add(mesh);
+    const lb=label(n.name);lb.position.copy(pos[i]).add(new THREE.Vector3(0,0.5,0));group.add(lb);
+  });
+  animate();
+}).catch(e=>{document.getElementById('status').textContent='상관 데이터를 불러오지 못했습니다 (server.py 실행 필요)';});
+
+// 수동 오르빗
+let drag=false,px=0,py=0,autorot=true;
+canvas.addEventListener('mousedown',e=>{drag=true;autorot=false;px=e.clientX;py=e.clientY;});
+window.addEventListener('mouseup',()=>drag=false);
+window.addEventListener('mousemove',e=>{if(!drag)return;group.rotation.y+=(e.clientX-px)*0.008;group.rotation.x+=(e.clientY-py)*0.008;px=e.clientX;py=e.clientY;});
+canvas.addEventListener('wheel',e=>{e.preventDefault();cam.position.z=Math.max(3,Math.min(20,cam.position.z+(e.deltaY>0?0.6:-0.6)));},{passive:false});
+
+function animate(){requestAnimationFrame(animate);if(autorot)group.rotation.y+=0.0025;renderer.render(scene,cam);}
+resize();renderer.render(scene,cam);
+</script>
+</body>
+</html>

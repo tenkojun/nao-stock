@@ -1,0 +1,40 @@
+# ── 비밀·자격증명 (절대 커밋 금지) ───────────────────────────
+*secret*
+*.key
+krx api.txt
+kis_secret.json
+krx_secret.json
+# 배포처 설정(개인 저장소 경로 포함 가능)
+# ⚠ .gitignore 는 줄 맨 앞의 # 만 주석이다. 꼬리 주석을 붙이면 패턴에 섞여 무효가 된다.
+update_config.json
+
+# ── 사용자 데이터 (아버지 개인 기록 — 공개 금지) ─────────────
+data/
+backup/
+
+# ── 캐시·빌드 산출물 ─────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+dist/
+build/
+*.zip
+
+# ── 검증 로그(용량 크고 재생성 가능) ─────────────────────────
+docs/검증_*.log
+docs/요인IC_*.json
+
+# ── OS/에디터 ────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# ── 내부 문서·개발 자료 (공개 저장소에 올리지 않음) ───────────
+CLAUDE.md
+.claude/
+docs/
+퀀트전문가_질문지.md
+개발방안_및_판단로직정리.md
+version.json.bak
