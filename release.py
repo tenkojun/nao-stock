@@ -28,7 +28,8 @@ PKG = "nao_stock.zip"
 
 EXCLUDE_DIRS = {"data", "backup", "__pycache__", "dist", ".git", ".claude",
                 ".pytest_cache", "krx_cache",
-                "docs"}                      # 내부 문서(자문 원문·질문지·진행로그)는 배포 대상 아님
+                "docs",                      # 내부 문서(자문 원문·질문지·진행로그)는 배포 대상 아님
+                "site"}                      # GitHub Pages 소개 페이지 — 앱 실행과 무관
 EXCLUDE_FILES = {"update_config.json", "krx api.txt", "kis_secret.json",
                  "krx_secret.json", ".gitignore",
                  "CLAUDE.md", "version.json.bak",
