@@ -88,6 +88,19 @@
   td:first-child{white-space:nowrap;color:var(--ink)}
   td:last-child{color:var(--ink-soft)}
 
+  /* ── 근거 등급 ── */
+  .gr{display:inline-block;font-family:var(--eng);font-size:9.5px;letter-spacing:.1em;
+    width:19px;height:19px;line-height:18px;text-align:center;border:1px solid currentColor}
+  .gr.a{color:var(--sage)} .gr.b{color:var(--ochre)} .gr.c{color:var(--ink-faint)}
+  .gr.v{color:var(--ox)}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:16px;font-size:14px;color:var(--ink-soft)}
+  .legend span{display:flex;align-items:center;gap:7px}
+  .cite{font-size:13.5px;color:var(--ink-faint);display:block;margin-top:2px}
+  .cite a{color:var(--ink-faint);text-decoration:none;border-bottom:1px dotted var(--rule)}
+  .cite a:hover{color:var(--ox);border-bottom-color:var(--ox)}
+  .ptitle{font-size:15.5px;color:var(--ink);line-height:1.4}
+  td.g{width:34px;text-align:center;vertical-align:top;padding-top:14px}
+
   /* ── 수치 ── */
   .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--rule);
     border:1px solid var(--rule);margin-top:24px}
@@ -184,22 +197,110 @@
 </section>
 
 <section>
-  <div class="kicker">Evidence</div>
-  <h2>검증을 어떻게 했나</h2>
-  <p>신호를 넣기 전에 통과해야 하는 절차를 먼저 만들었고, <b>결과가 나쁘면 기능을 뺐습니다.</b></p>
+  <div class="kicker">Research</div>
+  <h2>무엇을 근거로 만들었나</h2>
+  <p>화면에 올린 지표에는 전부 출처가 있습니다. 다만 <b>논문이 있다는 것과 한국 시장에서 돈이 된다는 것은 다른 문제</b>라,
+     각 항목에 근거의 세기를 등급으로 붙이고 앱 안에서도 그대로 보여줍니다.</p>
+  <div class="legend">
+    <span><i class="gr a">A</i> 강한 실증 — 반복 검증된 문헌</span>
+    <span><i class="gr b">B</i> 실무·논쟁 — 근거는 있으나 이견 존재</span>
+    <span><i class="gr c">C</i> 약함 — 관행에 가까움</span>
+    <span><i class="gr v">V</i> 자체검증 — 한국 데이터로 직접 확인</span>
+  </div>
+
   <div class="tblwrap">
     <table>
-      <thead><tr><th>항목</th><th>방법</th></tr></thead>
+      <thead><tr><th></th><th>근거 논문</th><th>어디에 쓰나</th></tr></thead>
       <tbody>
-        <tr><td>예측력 측정</td><td>횡단면 Rank IC · Newey–West t (lag = 예측지평)</td></tr>
-        <tr><td>신뢰구간</td><td>블록 부트스트랩 · 순열검정</td></tr>
-        <tr><td>다중검정 보정</td><td>Benjamini–Hochberg FDR · Deflated Sharpe Ratio</td></tr>
-        <tr><td>표본 분리</td><td>70 / 30 홀드아웃</td></tr>
-        <tr><td>생존편향 제거</td><td>KRX 시점정합(point-in-time) 유니버스 · 상장폐지 수익률 반영</td></tr>
-        <tr><td>비용 반영</td><td>2026년 거래세(매도 0.20%) + 호가단위 스프레드, 유동성 등급별</td></tr>
+        <tr><td class="g"><i class="gr a">A</i></td>
+          <td><span class="ptitle">A Simple Long Memory Model of Realized Volatility</span>
+            <span class="cite">Corsi (2009) · <i>J. of Financial Econometrics</i> ·
+            <a href="https://papers.ssrn.com/sol3/papers.cfm?abstract_id=626064">SSRN</a></span></td>
+          <td>HAR-RV 예상 변동폭 밴드 — “며칠 새 얼마나 흔들릴 수 있나”</td></tr>
+        <tr><td class="g"><i class="gr a">A</i></td>
+          <td><span class="ptitle">Illiquidity and Stock Returns</span>
+            <span class="cite">Amihud (2002) · <i>J. of Financial Markets</i> ·
+            <a href="https://doi.org/10.1016/S1386-4181(01)00024-6">DOI</a></span></td>
+          <td>유동성 위험 — 팔고 싶을 때 못 파는 종목 걸러내기</td></tr>
+        <tr><td class="g"><i class="gr a">A</i></td>
+          <td><span class="ptitle">What Do We Know About the Profitability of Technical Analysis?</span>
+            <span class="cite">Park &amp; Irwin (2007) · <i>J. of Economic Surveys</i> ·
+            <a href="https://onlinelibrary.wiley.com/doi/abs/10.1111/j.1467-6419.2007.00519.x">DOI</a></span></td>
+          <td>기술적 분석의 손익분기 비용 0.22~0.39% — <b>비용 기준선</b></td></tr>
+        <tr><td class="g"><i class="gr v">V</i></td>
+          <td><span class="ptitle">Returns to Buying Winners and Selling Losers</span>
+            <span class="cite">Jegadeesh &amp; Titman (1993) · <i>J. of Finance</i> ·
+            <a href="https://www.jstor.org/stable/2328882">JSTOR</a></span></td>
+          <td>중기 모멘텀 — 한국 250종목으로 재검증(아래 결과 참조)</td></tr>
+        <tr><td class="g"><i class="gr b">B</i></td>
+          <td><span class="ptitle">The Cross-Section of Expected Stock Returns</span>
+            <span class="cite">Fama &amp; French (1992) · <i>J. of Finance</i> ·
+            <a href="https://doi.org/10.1111/j.1540-6261.1992.tb04398.x">DOI</a></span></td>
+          <td>가치 지표(PBR) 해석</td></tr>
+        <tr><td class="g"><i class="gr b">B</i></td>
+          <td><span class="ptitle">The Other Side of Value: Gross Profitability</span>
+            <span class="cite">Novy-Marx (2013) · <i>J. of Financial Economics</i> ·
+            <a href="https://doi.org/10.1016/j.jfineco.2013.01.003">DOI</a></span></td>
+          <td>퀄리티 — 매출총이익률로 본 사업의 체력</td></tr>
+        <tr><td class="g"><i class="gr b">B</i></td>
+          <td><span class="ptitle">Do Foreign Investors Destabilize Stock Markets?</span>
+            <span class="cite">Choe, Kho &amp; Stulz (1999) · <i>J. of Financial Economics</i> ·
+            <a href="https://doi.org/10.1016/S0304-405X(99)00037-9">DOI</a></span></td>
+          <td>외국인·기관 수급 해석 (한국 시장 대상 연구)</td></tr>
+        <tr><td class="g"><i class="gr b">B</i></td>
+          <td><span class="ptitle">The Total Cost of Transactions on the NYSE</span>
+            <span class="cite">Berkowitz, Logue &amp; Noser (1988) · <i>J. of Finance</i> ·
+            <a href="https://doi.org/10.1111/j.1540-6261.1988.tb04593.x">DOI</a></span></td>
+          <td>VWAP — 집행 기준선</td></tr>
+        <tr><td class="g"><i class="gr b">B</i></td>
+          <td><span class="ptitle">Momentum Crashes</span>
+            <span class="cite">Daniel &amp; Moskowitz (2016) · <i>J. of Financial Economics</i> ·
+            <a href="https://doi.org/10.1016/j.jfineco.2015.12.002">DOI</a></span></td>
+          <td>모멘텀이 무너지는 국면 경고</td></tr>
+        <tr><td class="g"><i class="gr c">C</i></td>
+          <td><span class="ptitle">Evidence of Predictable Behavior of Security Returns</span>
+            <span class="cite">Jegadeesh (1990) · <i>J. of Finance</i> ·
+            <a href="https://doi.org/10.1111/j.1540-6261.1990.tb05110.x">DOI</a></span></td>
+          <td>단기 반전 — 효과가 약해 참고 관찰로만</td></tr>
       </tbody>
     </table>
   </div>
+</section>
+
+<section>
+  <div class="kicker">Method</div>
+  <h2>어떻게 검증했나</h2>
+  <p>“백테스트가 잘 나왔다”는 말은 근거가 되지 못합니다. 충분히 많은 조합을 시험하면
+     아무 의미 없는 규칙에서도 좋은 성적이 나오기 때문입니다.
+     그래서 <b>신호를 넣기 전에 통과해야 할 절차를 먼저 정해 두고</b>, 결과가 나쁘면 기능을 뺐습니다.</p>
+  <div class="tblwrap">
+    <table>
+      <thead><tr><th>단계</th><th>방법</th><th>출처</th></tr></thead>
+      <tbody>
+        <tr><td>예측력 측정</td><td>횡단면 Rank IC</td><td class="muted">Fama &amp; MacBeth (1973) 계열</td></tr>
+        <tr><td>자기상관 보정</td><td>Newey–West t (lag = 예측지평)</td>
+          <td><a href="https://doi.org/10.2307/1913610">Newey &amp; West (1987)</a></td></tr>
+        <tr><td>신뢰구간</td><td>블록 부트스트랩 · 순열검정</td>
+          <td><a href="https://doi.org/10.1080/01621459.1994.10476870">Politis &amp; Romano (1994)</a></td></tr>
+        <tr><td>다중검정 보정</td><td>Benjamini–Hochberg FDR</td>
+          <td><a href="https://doi.org/10.1111/j.2517-6161.1995.tb02031.x">Benjamini &amp; Hochberg (1995)</a></td></tr>
+        <tr><td>과적합 보정</td><td>Deflated Sharpe Ratio</td>
+          <td><a href="https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2460551">Bailey &amp; López de Prado (2014)</a></td></tr>
+        <tr><td>유의 기준</td><td>t &gt; 3 (신규 팩터 기준)</td>
+          <td><a href="https://doi.org/10.1093/rfs/hhv059">Harvey, Liu &amp; Zhu (2016)</a></td></tr>
+        <tr><td>생존편향 제거</td><td>KRX 시점정합 유니버스 · 상장폐지 수익률 반영</td>
+          <td><a href="https://doi.org/10.1111/j.1540-6261.1997.tb03818.x">Shumway (1997)</a></td></tr>
+        <tr><td>표본 분리</td><td>70 / 30 홀드아웃</td><td class="muted">—</td></tr>
+        <tr><td>비용 반영</td><td>거래세(매도 0.20%) + 호가단위 스프레드, 유동성 등급별</td>
+          <td class="muted">KRX 호가단위 · Park &amp; Irwin (2007)</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <div class="kicker">Result</div>
+  <h2>그래서 결과는</h2>
   <div class="stats">
     <div class="stat zero"><span class="n">0</span><span class="l">보정 후 통과한 신호</span></div>
     <div class="stat"><span class="n">250</span><span class="l">검증 종목</span></div>
@@ -207,9 +308,16 @@
     <div class="stat"><span class="n">0.71</span><span class="l">이 표본으로 탐지<br>가능한 최소 연 샤프</span></div>
   </div>
   <p style="margin-top:22px">유효검정수 40·20 어느 기준으로도 통과한 신호가 없었고, Deflated Sharpe도 두 전략 모두 탈락했습니다.
-     8년 표본으로는 연 샤프 0.71 이상만 탐지 가능하다는 사전 검토와 일치합니다.</p>
-  <p class="muted">발견한 것도 그대로 적어 둡니다. 60일 신고가 근접 지표는 상장폐지 종목을 포함하면 t=4.3으로 강력해 보이지만,
-     생존 종목만 보면 t≈0입니다. <b>죽어가는 종목이 만들어낸 착시</b>였습니다.</p>
+     8년 표본으로는 연 샤프 0.71 이상만 탐지 가능하다는 사전 검토와 일치합니다.
+     개별 t값이 나온 항목은 있었지만(모멘텀·단기반전), <b>다중검정 보정과 거래비용을 함께 반영하면 남지 않았습니다.</b></p>
+  <p class="pull">그래서 이 앱은 가격 신호를 “판정”이 아니라 “관찰”로만 표시합니다.<br>
+     확인되지 않은 것은 확인되지 않았다고 적습니다.</p>
+  <p class="muted">가장 크게 속을 뻔했던 것도 적어 둡니다. 60일 신고가 근접 지표는 상장폐지 종목을 포함해 계산하면 t=4.3으로
+     아주 강력해 보입니다. 그런데 살아남은 종목만 보면 t≈0입니다.
+     <b>죽어가는 종목이 만들어낸 착시</b>였고, 생존편향을 제거하지 않았다면 이 신호를 그대로 넣었을 것입니다.</p>
+  <p class="muted">한국 시장에 대한 기존 연구도 이 결과와 어긋나지 않습니다. Chui, Titman &amp; Wei (2010)는
+     개인주의 성향이 낮은 시장(한국 포함)에서 모멘텀이 약하거나 반전이 우세하다고 보고합니다
+     (<a href="https://doi.org/10.1111/j.1540-6261.2009.01532.x"><i>J. of Finance</i></a>).</p>
 </section>
 
 <section>

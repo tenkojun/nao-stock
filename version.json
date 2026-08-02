@@ -1,8 +1,8 @@
 {
- "version": "1.4.1",
+ "version": "1.4.2",
  "released": "2026-08-02",
  "notes": [
-  "문구 정리 — 제품 설명을 장기투자 분석기로 통일"
+  "소개 페이지에 근거 논문과 검증 방법을 상세히 정리"
  ],
  "min_python": "3.9",
  "requires": [
@@ -13,5 +13,5 @@
   "finance-datareader",
   "pywebview"
  ],
- "sha256": "7faf25ab0f40a0f2b1a7677702419e3f6928c6221beec66eff732f0baf9866f1"
+ "sha256": "bbc9e1e86e44b6543ec3726296da40f8a735af2aab9305cc2a980fd2dba5048e"
 }

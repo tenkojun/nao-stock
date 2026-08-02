@@ -71,24 +71,67 @@
 
 <br>
 
-## 검증을 어떻게 했나
+## 무엇을 근거로 만들었나
 
-신호를 넣기 전에 통과해야 하는 절차를 먼저 만들었고, **결과가 나쁘면 기능을 뺐습니다.**
+화면에 올린 지표에는 전부 출처가 있습니다. 다만 **논문이 있다는 것과 한국 시장에서 돈이 된다는 것은 다른 문제**라,
+각 항목에 근거의 세기를 등급으로 붙이고 앱 안에서도 그대로 보여줍니다.
 
-| 항목 | 방법 |
-|---|---|
-| 예측력 측정 | 횡단면 Rank IC · Newey–West t (lag = 예측지평) |
-| 신뢰구간 | 블록 부트스트랩 · 순열검정 |
-| 다중검정 보정 | Benjamini–Hochberg FDR · Deflated Sharpe Ratio |
-| 표본 분리 | 70/30 홀드아웃 |
-| 생존편향 제거 | KRX 시점정합(point-in-time) 유니버스 · 상장폐지 수익률 반영 |
-| 비용 반영 | 2026년 거래세(매도 0.20%) + 호가단위 스프레드, 유동성 등급별 |
+`A` 강한 실증 · `B` 실무·논쟁 · `C` 약함 · `V` 한국 데이터로 자체검증
 
-**결과**: 유효검정수 40·20 어느 기준으로도 **통과한 신호 0개**. Deflated Sharpe도 두 전략 모두 탈락.
-표본 8년으로는 연 샤프 0.71 이상만 탐지 가능하다는 사전 검토와 일치했습니다.
+| | 근거 논문 | 어디에 쓰나 |
+|:--:|---|---|
+| `A` | **A Simple Long Memory Model of Realized Volatility** — Corsi (2009), *J. of Financial Econometrics* · [SSRN](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=626064) | HAR-RV 예상 변동폭 밴드 |
+| `A` | **Illiquidity and Stock Returns** — Amihud (2002), *J. of Financial Markets* · [DOI](https://doi.org/10.1016/S1386-4181(01)00024-6) | 유동성 위험 — 팔고 싶을 때 못 파는 종목 |
+| `A` | **What Do We Know About the Profitability of Technical Analysis?** — Park & Irwin (2007), *J. of Economic Surveys* · [DOI](https://onlinelibrary.wiley.com/doi/abs/10.1111/j.1467-6419.2007.00519.x) | 손익분기 비용 0.22~0.39% — 비용 기준선 |
+| `V` | **Returns to Buying Winners and Selling Losers** — Jegadeesh & Titman (1993), *J. of Finance* · [JSTOR](https://www.jstor.org/stable/2328882) | 중기 모멘텀 — 한국 250종목 재검증 |
+| `B` | **The Cross-Section of Expected Stock Returns** — Fama & French (1992), *J. of Finance* · [DOI](https://doi.org/10.1111/j.1540-6261.1992.tb04398.x) | 가치 지표(PBR) 해석 |
+| `B` | **The Other Side of Value: Gross Profitability** — Novy-Marx (2013), *J. of Financial Economics* · [DOI](https://doi.org/10.1016/j.jfineco.2013.01.003) | 퀄리티 — 사업의 체력 |
+| `B` | **Do Foreign Investors Destabilize Stock Markets?** — Choe, Kho & Stulz (1999), *J. of Financial Economics* · [DOI](https://doi.org/10.1016/S0304-405X(99)00037-9) | 외국인·기관 수급 해석 (한국 시장 연구) |
+| `B` | **The Total Cost of Transactions on the NYSE** — Berkowitz, Logue & Noser (1988), *J. of Finance* · [DOI](https://doi.org/10.1111/j.1540-6261.1988.tb04593.x) | VWAP — 집행 기준선 |
+| `B` | **Momentum Crashes** — Daniel & Moskowitz (2016), *J. of Financial Economics* · [DOI](https://doi.org/10.1016/j.jfineco.2015.12.002) | 모멘텀이 무너지는 국면 경고 |
+| `C` | **Evidence of Predictable Behavior of Security Returns** — Jegadeesh (1990), *J. of Finance* · [DOI](https://doi.org/10.1111/j.1540-6261.1990.tb05110.x) | 단기 반전 — 약해서 참고 관찰로만 |
 
-발견한 것들도 기록해 둡니다 — 60일 신고가 근접 지표는 상장폐지 종목을 포함하면 t=4.3으로 강력해 보이지만,
-생존 종목만 보면 t≈0입니다. **죽어가는 종목이 만들어낸 착시**였습니다.
+<br>
+
+## 어떻게 검증했나
+
+"백테스트가 잘 나왔다"는 말은 근거가 되지 못합니다. 충분히 많은 조합을 시험하면
+아무 의미 없는 규칙에서도 좋은 성적이 나오기 때문입니다.
+그래서 **신호를 넣기 전에 통과해야 할 절차를 먼저 정해 두고**, 결과가 나쁘면 기능을 뺐습니다.
+
+| 단계 | 방법 | 출처 |
+|---|---|---|
+| 예측력 측정 | 횡단면 Rank IC | Fama & MacBeth (1973) 계열 |
+| 자기상관 보정 | Newey–West t (lag = 예측지평) | [Newey & West (1987)](https://doi.org/10.2307/1913610) |
+| 신뢰구간 | 블록 부트스트랩 · 순열검정 | [Politis & Romano (1994)](https://doi.org/10.1080/01621459.1994.10476870) |
+| 다중검정 보정 | Benjamini–Hochberg FDR | [Benjamini & Hochberg (1995)](https://doi.org/10.1111/j.2517-6161.1995.tb02031.x) |
+| 과적합 보정 | Deflated Sharpe Ratio | [Bailey & López de Prado (2014)](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2460551) |
+| 유의 기준 | t > 3 (신규 팩터) | [Harvey, Liu & Zhu (2016)](https://doi.org/10.1093/rfs/hhv059) |
+| 생존편향 제거 | KRX 시점정합 유니버스 · 상장폐지 수익률 반영 | [Shumway (1997)](https://doi.org/10.1111/j.1540-6261.1997.tb03818.x) |
+| 표본 분리 | 70 / 30 홀드아웃 | — |
+| 비용 반영 | 거래세(매도 0.20%) + 호가단위 스프레드, 유동성 등급별 | KRX 호가단위 · Park & Irwin (2007) |
+
+<br>
+
+## 그래서 결과는
+
+| 0 | 250 | 8년 | 0.71 |
+|:--:|:--:|:--:|:--:|
+| 보정 후 통과한 신호 | 검증 종목 | 표본 기간 | 탐지 가능한 최소 연 샤프 |
+
+유효검정수 40·20 어느 기준으로도 **통과한 신호 0개**. Deflated Sharpe도 두 전략 모두 탈락했습니다.
+개별 t값이 나온 항목은 있었지만(모멘텀·단기반전), **다중검정 보정과 거래비용을 함께 반영하면 남지 않았습니다.**
+
+> 그래서 이 앱은 가격 신호를 "판정"이 아니라 "관찰"로만 표시합니다.
+> 확인되지 않은 것은 확인되지 않았다고 적습니다.
+
+가장 크게 속을 뻔했던 것도 적어 둡니다. 60일 신고가 근접 지표는 상장폐지 종목을 포함해 계산하면 t=4.3으로
+아주 강력해 보입니다. 그런데 살아남은 종목만 보면 t≈0입니다. **죽어가는 종목이 만들어낸 착시**였고,
+생존편향을 제거하지 않았다면 이 신호를 그대로 넣었을 것입니다.
+
+한국 시장에 대한 기존 연구도 이 결과와 어긋나지 않습니다. Chui, Titman & Wei (2010)는 개인주의 성향이 낮은
+시장(한국 포함)에서 모멘텀이 약하거나 반전이 우세하다고 보고합니다
+([*J. of Finance*](https://doi.org/10.1111/j.1540-6261.2009.01532.x)).
 
 <br>
 
