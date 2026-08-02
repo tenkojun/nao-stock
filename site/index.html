@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NAO STOCK — 예측하지 않습니다. 계산하고 기록합니다.</title>
+<meta name="description" content="60대 장기투자자를 위한 한국주식 분석 데스크톱 프로그램. 가격 예측 대신 비중·비용·세금·분산을 계산하고 매매를 기록합니다.">
+<meta property="og:title" content="NAO STOCK">
+<meta property="og:description" content="예측하지 않습니다. 계산하고 기록합니다.">
+<meta property="og:type" content="website">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#e8e3d6; --paper-hi:#f2ede1; --paper-lo:#dcd6c6; --card:#efeade;
+    --ink:#1b1917; --ink-soft:#6d6659; --ink-faint:#9a9384;
+    --rule:#c3bcac; --rule-soft:#d4cebf;
+    --ox:#7a2018; --down:#3a4a63; --sage:#5c6b4a; --ochre:#9a7b3f;
+    --desk:#c4bfaf;
+    --eng:'Cinzel',serif; --ser:'Cormorant Garamond',Garamond,serif;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --paper:#1d1c1a; --paper-hi:#26241f; --paper-lo:#151412; --card:#232120;
+      --ink:#ece7da; --ink-soft:#a9a294; --ink-faint:#78726a;
+      --rule:#3a3630; --rule-soft:#2c2924;
+      --ox:#c4564a; --down:#7b93bd; --sage:#8fa477; --ochre:#c4a05c;
+      --desk:#0f0e0d;
+    }
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--desk);color:var(--ink);font-family:var(--ser);font-size:18px;line-height:1.65}
+  .sheet{max-width:1000px;margin:0 auto;background:
+      radial-gradient(120% 80% at 50% 0%,var(--paper-hi),var(--paper) 55%,var(--paper-lo));
+    min-height:100vh;position:relative;box-shadow:0 0 90px rgba(0,0,0,.35)}
+  .sheet::before{content:"";position:absolute;inset:0;pointer-events:none;
+    background:repeating-linear-gradient(0deg,rgba(0,0,0,.012) 0 1px,transparent 1px 2px)}
+  .wrap{position:relative;padding:0 clamp(22px,6vw,74px)}
+  .eng{font-family:var(--eng);letter-spacing:.22em;text-transform:uppercase}
+
+  /* ── 표지 ── */
+  header{padding:clamp(56px,10vw,96px) 0 44px;text-align:center;border-bottom:1px solid var(--rule)}
+  .mark{width:92px;height:92px;margin:0 auto 22px;display:block}
+  h1{font-family:var(--eng);font-size:clamp(30px,6vw,46px);font-weight:600;letter-spacing:.28em;
+     text-transform:uppercase;margin-left:.28em}
+  .lead{font-size:clamp(19px,3.2vw,25px);margin-top:16px;color:var(--ink)}
+  .sub{font-size:15px;color:var(--ink-soft);margin-top:9px}
+  .badges{display:flex;flex-wrap:wrap;gap:7px;justify-content:center;margin-top:24px}
+  .badge{font-family:var(--eng);font-size:9.5px;letter-spacing:.16em;border:1px solid var(--rule);
+    padding:5px 11px;color:var(--ink-soft);background:var(--card)}
+  .cta{display:flex;flex-wrap:wrap;gap:11px;justify-content:center;margin-top:28px}
+  .btn{font-family:var(--eng);font-size:11px;letter-spacing:.18em;text-transform:uppercase;
+    text-decoration:none;padding:12px 22px;border:1px solid var(--ink);color:var(--ink);
+    transition:background .18s,color .18s}
+  .btn:hover{background:var(--ink);color:var(--paper)}
+  .btn.ghost{border-color:var(--rule);color:var(--ink-soft)}
+  .btn.ghost:hover{background:var(--card);color:var(--ink)}
+
+  /* ── 구역 ── */
+  section{padding:52px 0;border-bottom:1px solid var(--rule-soft)}
+  section:last-of-type{border-bottom:none}
+  .kicker{font-family:var(--eng);font-size:10px;letter-spacing:.24em;color:var(--ink-faint);
+    text-transform:uppercase;margin-bottom:14px}
+  h2{font-size:clamp(23px,4vw,30px);font-weight:600;margin-bottom:16px;letter-spacing:-.01em}
+  p{margin-bottom:14px}
+  p:last-child{margin-bottom:0}
+  .muted{color:var(--ink-soft)}
+  .pull{font-size:clamp(20px,3.4vw,26px);line-height:1.5;border-left:3px solid var(--ox);
+    padding:4px 0 4px 20px;margin:26px 0}
+
+  /* ── 두 칸 ── */
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:26px;margin-top:26px}
+  .col{border:1px solid var(--rule);background:var(--card);padding:22px 24px}
+  .col h3{font-size:19px;margin-bottom:12px;font-weight:600}
+  .col.yes h3{color:var(--sage)} .col.no h3{color:var(--ox)}
+  .col ul{list-style:none}
+  .col li{padding:6px 0 6px 18px;position:relative;font-size:16.5px;color:var(--ink-soft)}
+  .col li::before{content:"·";position:absolute;left:4px;color:var(--ink-faint)}
+
+  /* ── 표 ── */
+  .tblwrap{overflow-x:auto;margin-top:20px;border:1px solid var(--rule)}
+  table{width:100%;border-collapse:collapse;font-size:15.5px;background:var(--card);min-width:520px}
+  th,td{text-align:left;padding:11px 15px;border-bottom:1px solid var(--rule-soft)}
+  th{font-family:var(--eng);font-size:9.5px;letter-spacing:.16em;color:var(--ink-faint);
+    text-transform:uppercase;background:var(--paper-lo)}
+  tr:last-child td{border-bottom:none}
+  td:first-child{white-space:nowrap;color:var(--ink)}
+  td:last-child{color:var(--ink-soft)}
+
+  /* ── 수치 ── */
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--rule);
+    border:1px solid var(--rule);margin-top:24px}
+  .stat{background:var(--card);padding:20px 14px;text-align:center}
+  .stat .n{font-family:var(--eng);font-size:clamp(22px,4vw,30px);font-weight:600;display:block}
+  .stat .l{font-size:12.5px;color:var(--ink-faint);margin-top:5px;display:block;line-height:1.4}
+  .stat.zero .n{color:var(--ox)}
+
+  /* ── 코드 ── */
+  pre{background:var(--paper-lo);border:1px solid var(--rule);padding:15px 17px;overflow-x:auto;
+    font-family:ui-monospace,'Consolas',monospace;font-size:13.5px;line-height:1.7;margin:14px 0}
+  code{font-family:ui-monospace,'Consolas',monospace;font-size:.88em;
+    background:var(--paper-lo);padding:1px 5px;border:1px solid var(--rule-soft)}
+  pre code{background:none;border:none;padding:0}
+
+  footer{padding:40px 0 52px;text-align:center;border-top:1px solid var(--rule)}
+  footer .n{font-family:var(--eng);letter-spacing:.2em;font-size:13px}
+  footer .m{font-size:13.5px;color:var(--ink-faint);margin-top:10px;line-height:1.8}
+  a{color:var(--ox)}
+  @media(max-width:720px){
+    body{font-size:17px}
+    .cols,.stats{grid-template-columns:1fr}
+    .stats{gap:1px}
+  }
+</style>
+</head>
+<body>
+<div class="sheet"><div class="wrap">
+
+<header>
+  <svg class="mark" viewBox="0 0 1024 1024" aria-label="NAO STOCK">
+    <rect x="36" y="36" width="952" height="952" rx="196" fill="var(--paper-hi)"
+          stroke="var(--ink)" stroke-width="26"/>
+    <polygon points="352,300 482,300 672,724 542,724" fill="var(--ox)"/>
+    <rect x="300" y="300" width="104" height="424" fill="var(--ink)"/>
+    <rect x="620" y="300" width="104" height="424" fill="var(--ink)"/>
+  </svg>
+  <h1>NAO Stock</h1>
+  <p class="lead">예측하지 않습니다. 계산하고 기록합니다.</p>
+  <p class="sub">60대 장기투자자를 위한 한국주식 분석 데스크톱 프로그램</p>
+  <div class="badges">
+    <span class="badge">v1.4.0</span>
+    <span class="badge">Python 3.9+</span>
+    <span class="badge">Windows 10 · 11</span>
+    <span class="badge">MIT License</span>
+  </div>
+  <div class="cta">
+    <a class="btn" href="https://github.com/tenkojun/nao-stock/releases/latest">내려받기</a>
+    <a class="btn ghost" href="https://github.com/tenkojun/nao-stock">소스 보기</a>
+  </div>
+</header>
+
+<section>
+  <div class="kicker">Why</div>
+  <h2>왜 만들었나</h2>
+  <p>아버지는 매달 남는 돈으로 주식을 사십니다. 한 달에 열 번쯤 사고, 한두 번 파십니다.
+     떨어지면 더 사서 평단을 낮추는 습관이 있고, 1개월에서 1년쯤 들고 계십니다.</p>
+  <p>그런 분께 필요한 건 “오를까요, 내릴까요”에 대한 대답이 아니었습니다.
+     지금 내 계좌가 한쪽으로 쏠려 있지는 않은지, 이번 달 여윳돈을 어떻게 나눌지,
+     세금과 수수료를 빼면 실제로 얼마가 남는지 — <b>확실하게 계산할 수 있는 것들</b>이었습니다.</p>
+  <p class="pull">그래서 이 프로그램은 추천하지 않습니다.<br>대신 정확하게 계산하고, 빠짐없이 기록합니다.</p>
+</section>
+
+<section>
+  <div class="kicker">Scope</div>
+  <h2>하는 일 / 하지 않는 일</h2>
+  <div class="cols">
+    <div class="col yes">
+      <h3>합니다 — 계산과 기록</h3>
+      <ul>
+        <li>이번 달 여윳돈 배분 계산</li>
+        <li>계좌 쏠림·집중도 진단</li>
+        <li>세금·수수료·호가 스프레드 왕복비용</li>
+        <li>변동성·분산 계산</li>
+        <li>매매 이유와 계획 기록</li>
+        <li>지금 가격의 위치(고점·이동평균 대비)</li>
+        <li>재무 상태·투자자별 수급 표시</li>
+      </ul>
+    </div>
+    <div class="col no">
+      <h3>하지 않습니다 — 예측</h3>
+      <ul>
+        <li>오를지 내릴지 맞히기</li>
+        <li>매수·매도 추천</li>
+        <li>목표가·확률·등급 제시</li>
+        <li>자동매매</li>
+      </ul>
+      <p class="muted" style="font-size:15.5px;margin-top:14px">
+        한국 대형주로 직접 검증해 봤지만, 비용을 빼고 나면
+        통계적으로 유의한 가격 예측 신호를 찾지 못했습니다.
+        그래서 그 자리를 비워 두었습니다.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="kicker">Evidence</div>
+  <h2>검증을 어떻게 했나</h2>
+  <p>신호를 넣기 전에 통과해야 하는 절차를 먼저 만들었고, <b>결과가 나쁘면 기능을 뺐습니다.</b></p>
+  <div class="tblwrap">
+    <table>
+      <thead><tr><th>항목</th><th>방법</th></tr></thead>
+      <tbody>
+        <tr><td>예측력 측정</td><td>횡단면 Rank IC · Newey–West t (lag = 예측지평)</td></tr>
+        <tr><td>신뢰구간</td><td>블록 부트스트랩 · 순열검정</td></tr>
+        <tr><td>다중검정 보정</td><td>Benjamini–Hochberg FDR · Deflated Sharpe Ratio</td></tr>
+        <tr><td>표본 분리</td><td>70 / 30 홀드아웃</td></tr>
+        <tr><td>생존편향 제거</td><td>KRX 시점정합(point-in-time) 유니버스 · 상장폐지 수익률 반영</td></tr>
+        <tr><td>비용 반영</td><td>2026년 거래세(매도 0.20%) + 호가단위 스프레드, 유동성 등급별</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="stats">
+    <div class="stat zero"><span class="n">0</span><span class="l">보정 후 통과한 신호</span></div>
+    <div class="stat"><span class="n">250</span><span class="l">검증 종목</span></div>
+    <div class="stat"><span class="n">8년</span><span class="l">표본 기간</span></div>
+    <div class="stat"><span class="n">0.71</span><span class="l">이 표본으로 탐지<br>가능한 최소 연 샤프</span></div>
+  </div>
+  <p style="margin-top:22px">유효검정수 40·20 어느 기준으로도 통과한 신호가 없었고, Deflated Sharpe도 두 전략 모두 탈락했습니다.
+     8년 표본으로는 연 샤프 0.71 이상만 탐지 가능하다는 사전 검토와 일치합니다.</p>
+  <p class="muted">발견한 것도 그대로 적어 둡니다. 60일 신고가 근접 지표는 상장폐지 종목을 포함하면 t=4.3으로 강력해 보이지만,
+     생존 종목만 보면 t≈0입니다. <b>죽어가는 종목이 만들어낸 착시</b>였습니다.</p>
+</section>
+
+<section>
+  <div class="kicker">Install</div>
+  <h2>설치</h2>
+  <pre><code>git clone https://github.com/tenkojun/nao-stock.git
+cd nao-stock
+pip install flask numpy requests pandas finance-datareader pywebview</code></pre>
+  <p><code>나오주식_실행.bat</code>을 한 번 실행하면 필요한 라이브러리를 설치하고
+     <b>바탕화면에 아이콘을 만들어 줍니다.</b> 다음부터는 아이콘만 누르면 됩니다.
+     주소창도, 탭도, 검은 명령창도 뜨지 않는 자체 창으로 열립니다.</p>
+  <pre><code>pythonw 나오주식.pyw     # 프로그램 창으로 실행
+python server.py         # 개발용(브라우저, 자동 리로드)
+python tools/check.py    # 배포 전 점검</code></pre>
+  <p class="muted">시세를 보려면 한국투자증권 OpenAPI 키가 필요합니다. 프로그램의
+     <b>설정 → API 연결</b>에서 넣고 저장할 수 있습니다. 키가 없어도 화면은 합성 데이터로 동작합니다.</p>
+</section>
+
+<section>
+  <div class="kicker">Stack</div>
+  <h2>기술</h2>
+  <p><code>Python</code> <code>Flask</code> <code>NumPy</code> <code>pywebview</code>
+     <code>Lightweight&nbsp;Charts</code></p>
+  <p class="muted">데이터 — 한국투자증권 OpenAPI · KRX 정보데이터시스템 · FinanceDataReader</p>
+</section>
+
+<footer>
+  <div class="n">NAO Stock</div>
+  <div class="m">
+    개발 <b>정준화</b> · <a href="https://github.com/tenkojun">tenkojun</a><br>
+    이 프로그램은 정보 제공용입니다. 투자 판단과 그 결과는 이용자 본인에게 있습니다.<br>
+    MIT License · © 2026
+  </div>
+</footer>
+
+</div></div>
+</body>
+</html>
