@@ -368,7 +368,7 @@ def api_auth_logout():
 def api_keys():
     """API 키 상태 조회 / 저장 / 연결시험.
     ⚠ 응답에는 **키 값을 절대 담지 않는다**(존재 여부와 끝 4자리만).
-    변경은 관리자만 — 아버지 계정에서 실수로 지우는 일이 없도록."""
+    변경은 관리자만 — 일반 계정에서 실수로 지우는 일이 없도록."""
     from auth import whoami
     import keys as K
     u = whoami(request.headers.get("X-Auth-Token", ""))
@@ -388,7 +388,7 @@ def api_keys():
 
 @app.route("/api/auth/password", methods=["POST"])
 def api_auth_password():
-    """비밀번호 설정 — 어드민만(자기 계정 또는 아버지 계정)."""
+    """비밀번호 설정 — 관리자만(자기 계정 또는 사용자 계정)."""
     from auth import whoami, set_password
     u = whoami(request.headers.get("X-Auth-Token", ""))
     if not u or u.get("role") != "admin":

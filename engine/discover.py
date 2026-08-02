@@ -22,7 +22,7 @@ import numpy as np
 import FinanceDataReader as fdr
 
 
-# Industry(업종) → 아버지가 브라우징하기 쉬운 broad 섹터(~12개)
+# Industry(업종) → 브라우징하기 쉬운 broad 섹터(~12개)
 _SECMAP = [
     # 더 구체적인 패턴을 먼저 (예: '통신 및 방송 장비'가 '장비'로 기계에 빨려가지 않게)
     (("반도체", "전자부품", "디스플레이", "전자집적", "통신 및 방송 장비", "영상 및 통신",

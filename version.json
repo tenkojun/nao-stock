@@ -1,10 +1,8 @@
 {
- "version": "1.4.0",
+ "version": "1.4.1",
  "released": "2026-08-02",
  "notes": [
-  "설정에서 API 키를 직접 넣고 저장할 수 있습니다",
-  "테마 3가지 — 종이 · 밤 · 또렷하게",
-  "다른 PC에서도 시세가 연결되도록 키 경로를 고쳤습니다"
+  "문구 정리 — 제품 설명을 장기투자 분석기로 통일"
  ],
  "min_python": "3.9",
  "requires": [
@@ -15,5 +13,5 @@
   "finance-datareader",
   "pywebview"
  ],
- "sha256": "2661e6ca5b58e70d01e04771d126f3428f2a83f32ec10975d2dcd6778903ab97"
+ "sha256": "7faf25ab0f40a0f2b1a7677702419e3f6928c6221beec66eff732f0baf9866f1"
 }

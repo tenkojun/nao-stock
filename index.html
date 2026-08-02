@@ -781,7 +781,7 @@
       '오더블럭 '+(z.type==='bull'?'매수 흔적':'매도 흔적')+' '+fmt(Math.round((z.lo+z.hi)/2)),true));
     positionZones();
     const vN=Math.min(cd.length,64); chart.timeScale().setVisibleLogicalRange({from:cd.length-vN,to:cd.length+3});
-    // 인트라데이 전용 범례(용어를 아버지 눈높이로 설명)
+    // 인트라데이 전용 범례(용어를 쉬운 말로 설명)
     const lgEl=document.getElementById('legend');
     if(lgEl){if(!lgEl.dataset.daily)lgEl.dataset.daily=lgEl.innerHTML;
       lgEl.innerHTML=`<span class="lg" title="오늘 거래가 가장 많이 몰린 가격 — 사람들이 인정한 '적정가' 느낌"><i style="border-top:2px solid #7a2018"></i>POC 최다거래</span>
@@ -795,7 +795,7 @@
     ovlCons.style.display='';
     ovlCons.innerHTML='<div style="background:rgba(150,56,43,.14);border:1px solid var(--ox);padding:6px 8px;margin-bottom:7px;font-size:11px;line-height:1.45;color:var(--ink)">'+
       '<b style="color:var(--ox)">⚠ 참고 전용 화면입니다</b><br>여기 지표들(오더블럭·FVG·볼륨프로파일)은 <b>학술적으로 검증된 적이 없고</b>, 과거 분봉이 없어 저희가 검증할 수도 없습니다. '+
-      '아버지의 보유기간(수개월~1년)과는 <b>시간 단위가 전혀 다릅니다</b>. 이 화면을 보고 자주 사고파는 것이 가장 큰 손실 요인입니다(매도 시 세금 0.20%).</div>'+
+      '장기보유(수개월~1년)와는 <b>시간 단위가 전혀 다릅니다</b>. 이 화면을 보고 자주 사고파는 것이 가장 큰 손실 요인입니다(매도 시 세금 0.20%).</div>'+
       '<div class="ot">Microstructure · '+(CURTF==='1m'?'1분':'5분')+' 미시구조</div>'+
       '<div style="font-size:12px;line-height:1.65">매수 거래량 비율 <b style="color:'+(del.buy_ratio>=50?'var(--sage,#5f7145)':'var(--ox,#96382b)')+'">'+(del.buy_ratio!=null?del.buy_ratio:'-')+'%</b> · 누적델타 '+((del.last||0).toLocaleString())+'<br>'+
       '구조 '+(bos==='up'?'<b style="color:var(--sage,#5f7145)">▲ 상방 돌파(BOS)</b>':bos==='down'?'<b style="color:var(--ox,#96382b)">▼ 하방 이탈(BOS)</b>':'– 레인지')+' · POC '+(d.vp?fmt(d.vp.poc):'-')+' · 밸류 '+(d.vp?fmt(d.vp.val)+'~'+fmt(d.vp.vah):'-')+'</div>'+
@@ -840,7 +840,7 @@
     const col=s3==='긍정 관찰'?'var(--sage)':s3==='주의'?'var(--ox)':'var(--ochre)';
     const s3icon=s3==='긍정 관찰'?'●':s3==='주의'?'▲':'◐';
     const cont=(d.contributions||[]).slice(0,4).map((c,i)=>`<div class="vr"><span class="k">근거 ${i+1} · ${c[3]}</span><span class="v ${c[1]>=0?'up':'down'}">${c[2].split(' [')[0].slice(0,16)} ${c[1]>=0?'+':''}${c[1].toFixed(2)}</span></div>`).join('');
-    // ⭐ 진입 적정도 (검증된 신호·정직한 관찰) — 아버지 1순위: "지금 사도 괜찮을까"
+    // ⭐ 진입 적정도 (검증된 신호·정직한 관찰) — 1순위: "지금 사도 괜찮을까"
     const e=d.entry; let entryHtml='';
     if(e&&e.band){
       const bc=e.tone==='warn'?'var(--ox)':e.tone==='mild_plus'?'var(--sage)':'var(--ochre)';
@@ -1414,7 +1414,7 @@
         <div style="font-size:11px;color:var(--ink-faint);margin-top:5px">60일 낙폭 ${m.dd60!=null?(m.dd60*100).toFixed(0)+'%':'-'} · RSI ${m.rsi!=null?m.rsi:'-'} · 볼린저z ${m.boll_z!=null?m.boll_z:'-'}</div></div>`;}
     const rsiV=d?d.rsi:50;
     const cards=STUDY.map(s=>studyCard(s.name==='RSI (과매도·과매수)'?Object.assign({},s,{svg:rsiSvg(rsiV)}):s)).join('');
-    stdbody.innerHTML=ctx+`<div style="font-size:11px;color:var(--ink-faint);line-height:1.5;margin-bottom:12px">화면에 나오는 지표들을 아버지 눈높이로 풀었습니다. 각 항목의 '우리 검증'은 이 앱이 한국 실데이터로 직접 확인한 결과입니다.</div>`+cards+`<div class="mfoot">교육 목적 · 특정 종목 매매 권유가 아닙니다</div>`;
+    stdbody.innerHTML=ctx+`<div style="font-size:11px;color:var(--ink-faint);line-height:1.5;margin-bottom:12px">화면에 나오는 지표들을 쉬운 말로 풀었습니다. 각 항목의 '우리 검증'은 이 앱이 한국 실데이터로 직접 확인한 결과입니다.</div>`+cards+`<div class="mfoot">교육 목적 · 특정 종목 매매 권유가 아닙니다</div>`;
     stdmask.classList.add('on');
   }
   function addMsg(who,txt){const d=document.createElement('div');d.className='msg '+who;d.innerHTML=`<div class="who">${who==='u'?'나':'✦ Claude'}</div><div class="b">${txt}</div>`;chatlog.appendChild(d);chatlog.scrollTop=chatlog.scrollHeight;}
@@ -1493,7 +1493,7 @@
     PREFS_READY=true;
   }
 
-  // ── 헤더 메뉴 (아버지 사용 흐름 기준 3묶음) ──
+  // ── 헤더 메뉴 (사용 흐름 기준 3묶음) ──
   const NAVS={
     money:[["🧮","이번 달 배분","여유자금을 어느 종목에 얼마씩 나눌지 계산","openAlloc"],
            ["💼","내 계좌","보유 종목의 쏠림과 위험 점검","openPortfolio"],

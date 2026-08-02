@@ -592,7 +592,7 @@ def evidence_report(panel, horizons=EV_HORIZONS):
                   f"롱숏 회당 {lm*100:+.2f}%·연 {lann*100:+.1f}%·Sh {lsh:+.2f}·t{lt:+.2f}  |  "
                   f"롱온리 연 {gann*100:+.1f}%·Sh {gsh:+.2f}·t{gt:+.2f}")
     print("\n  ⚠ 롱숏 Sharpe>0.5 & t≥2라야 실전 후보(롱온리 연수익은 시장베타 착시 주의).")
-    print("    DSR(J-106)·생존편향 잔여·슬리피지 추가고려. 장기보유는 H=120/250 컬럼이 아버지 용도에 근접.")
+    print("    DSR(J-106)·생존편향 잔여·슬리피지 추가고려. 장기보유는 H=120/250 컬럼이 장기보유 용도에 근접.")
 
 
 def _run_fdr():
