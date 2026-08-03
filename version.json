@@ -1,5 +1,5 @@
 {
- "version": "1.7.1",
+ "version": "1.7.2",
  "released": "2026-08-03",
  "notes": [
   "로고를 또렷하게 바꿨습니다",
@@ -14,5 +14,5 @@
   "finance-datareader",
   "pywebview"
  ],
- "sha256": "2606f460c7275b5553f599fe129a84beb1b5164352a13a7cca25b5fb7b6af9f6"
+ "sha256": "8acfeecbf385b45fd47ae748cd2bed13b7ed0523dc061bc00013bc3e6a61dba3"
 }

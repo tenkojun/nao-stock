@@ -29,7 +29,8 @@ PKG = "nao_stock.zip"
 EXCLUDE_DIRS = {"data", "backup", "__pycache__", "dist", ".git", ".claude",
                 ".pytest_cache", "krx_cache",
                 "docs",                      # 내부 문서(자문 원문·질문지·진행로그)는 배포 대상 아님
-                "site"}                      # GitHub Pages 소개 페이지 — 앱 실행과 무관
+                "site",                      # GitHub Pages 소개 페이지 — 앱 실행과 무관
+                "dist_exe", "build_exe"}     # EXE 빌드물(241MB) — 업데이트 zip 에 들어가면 안 된다
 EXCLUDE_FILES = {"update_config.json", "krx api.txt", "kis_secret.json",
                  "krx_secret.json", ".gitignore",
                  "CLAUDE.md", "version.json.bak",
@@ -93,6 +94,17 @@ def build(version, notes):
         json.dump(v, fp, ensure_ascii=False, indent=1)
 
     size = os.path.getsize(zpath) / 1024
+    # 업데이트 zip 은 앱 소스만 담는다. 갑자기 커졌다면 빌드물 같은 게 섞인 것이다.
+    # (실제로 dist_exe 가 섞여 204MB 짜리를 배포한 적이 있다 — 아버지가 그걸 내려받게 된다.)
+    if size > 5000:
+        big = sorted(((zi.file_size, zi.filename) for zi in zipfile.ZipFile(zpath).infolist()),
+                     reverse=True)[:5]
+        print(f"\n  ⚠ 패키지가 비정상적으로 큽니다: {size/1024:.0f} MB")
+        for sz, nm in big:
+            print(f"     {sz/1024/1024:6.1f} MB  {nm}")
+        print("  제외 목록(EXCLUDE_DIRS)을 확인하세요. 배포를 중단합니다.")
+        sys.exit(1)
+
     print(f"\n  패키지 생성: {zpath}")
     print(f"  파일 {n}개 · {size:.0f} KB · v{version}")
     print(f"  SHA256: {sha[:16]}…")
