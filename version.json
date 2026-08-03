@@ -1,9 +1,8 @@
 {
- "version": "1.7.6",
+ "version": "1.7.7",
  "released": "2026-08-03",
  "notes": [
-  "5분봉에서 오른쪽 설명창이 차트를 가리지 않게 했습니다",
-  "지지·저항 같은 구간을 차트 아래에서 모두 볼 수 있습니다"
+  "수급 화면을 새로 만들었습니다 — 외국인·기관·개인이 각각 얼마나 사고팔았는지 한눈에"
  ],
  "min_python": "3.9",
  "requires": [
@@ -14,5 +13,5 @@
   "finance-datareader",
   "pywebview"
  ],
- "sha256": "8e92d5b3a6404bdd59b4c0711eb08dfb45c6e9c2ae62417fb9708bb8bc68311f"
+ "sha256": "99a3a5b06aa4baeaec334c3369ea4b040757e7a0734262d2ce72eb603e5626ab"
 }

@@ -164,7 +164,9 @@ def _payload(q, ohlc, fl, live, dates, mc_paths=2000, mc_steps=20, rs=None, wk=N
         "ohlc": {k: ohlc[k][sl] for k in ("open", "high", "low", "close", "volume")},
         "dates": list(dates[sl]) if dates else [],
         "levels": lv, "stop": res["stop"], "flow_markers": markers,
+        # 개인까지 넣는다 — 셋을 같이 봐야 "누가 사고 누가 파는지"가 보인다
         "flow": {"foreign_5d": fl.get("foreign_5d", 0), "org_5d": fl.get("org_5d", 0),
+                 "person_5d": sum(r.get("person_net", 0) for r in (fl.get("rows") or [])[:5]),
                  "foreign_dir": fl.get("foreign_dir", ""), "org_dir": fl.get("org_dir", "")},
         "flow_pro": fp,
         "sr_zones": _sr(ohlc, res["price"]),
@@ -362,6 +364,16 @@ def api_auth_me():
 def api_auth_logout():
     from auth import logout
     return jsonify(logout(request.headers.get("X-Auth-Token", "")))
+
+
+@app.route("/api/flow/<code>")
+def api_flow(code):
+    """종목 수급 — 외국인·기관·개인을 같은 단위로. 일별 + 오늘 시간대별."""
+    import flow_view
+    try:
+        return jsonify(flow_view.build(code, int(request.args.get("days", 20))))
+    except Exception as e:
+        return jsonify({"code": code, "days": [], "error": f"{type(e).__name__}: {e}"})
 
 
 @app.route("/api/session")

@@ -39,6 +39,31 @@
     margin-bottom:6px;font-size:10.5px;line-height:1.45;color:var(--ink);cursor:pointer}
   .ovl .warn .more{display:none;margin-top:4px}
   .ovl .warn.open .more{display:block}
+  /* ── 종목 수급 (외국인·기관·개인) ── */
+  .frow{margin-top:12px}
+  .frow .fh{display:flex;align-items:center;gap:7px;font-size:13px;margin-bottom:4px;flex-wrap:wrap}
+  .frow .fh i{width:10px;height:10px;flex:none}
+  .frow .fh b{min-width:52px}
+  .frow .fnum{font-family:ui-monospace,monospace;font-size:11.5px;
+    border:1px solid var(--rule-soft);padding:1px 6px}
+  .fbars{display:flex;align-items:center;gap:1px;position:relative;
+    border:1px solid var(--rule-soft);background:var(--paper-hi);padding:0 3px}
+  .fbars u{position:absolute;left:0;right:0;top:50%;height:1px;background:var(--rule);
+    text-decoration:none}
+  .fbar{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;
+    height:100%;min-width:3px}
+  .fbar i,.fbar b{display:block;width:100%;max-width:11px}
+  .fbar i{align-self:flex-end;margin-top:auto}
+  .ihead,.irow{display:flex;align-items:flex-end;gap:4px;margin-top:3px}
+  .ihead{font-family:var(--eng);font-size:9px;letter-spacing:.1em;color:var(--ink-faint)}
+  .ihead span,.irow .ibar{flex:1;text-align:center}
+  .ihead span:first-child,.irow .ik{flex:none;width:52px;text-align:left}
+  .irow .ik{font-size:12px;color:var(--ink-soft)}
+  .ibar{display:flex;flex-direction:column;justify-content:center;height:46px;
+    border-bottom:1px solid var(--rule-soft)}
+  .ibar i{margin-top:auto;width:100%;max-width:26px;align-self:center}
+  .ibar b{width:100%;max-width:26px;align-self:center}
+
   /* 구간 목록 — 차트 아래 가로 줄(캔들을 가리지 않는다) */
   .zonebar{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;padding:5px 4px 0;
     min-height:0}
@@ -279,6 +304,14 @@
   <div class="modal" style="width:min(720px,95vw);height:min(820px,90vh)">
     <div class="mh"><span class="t">🌐 Market Context · 시장 컨텍스트</span><span class="x" onclick="closeMarket()">✕</span></div>
     <div style="padding:14px 18px;overflow:auto" id="mktbody"></div>
+  </div>
+</div>
+
+<!-- 종목 수급 모달 — 외국인·기관·개인을 같은 단위로 -->
+<div class="mask" id="flwmask">
+  <div class="modal" style="width:min(920px,97vw);height:min(820px,90vh)">
+    <div class="mh"><span class="t">🏦 수급 · 누가 사고 파나</span><span class="x" onclick="closeFlow()">✕</span></div>
+    <div style="padding:14px 18px;overflow:auto" id="flwbody"></div>
   </div>
 </div>
 
@@ -778,6 +811,67 @@
       body:JSON.stringify({action:'delete',id})});
       NC=await r.json(); ncRender();}catch(e){}}
 
+  // ── 종목 수급 (외국인·기관·개인) ────────────────────────────────
+  // 예전엔 오른쪽 패널에 '외국인(5일)·기관(5일)' 두 줄뿐이고 개인은 아예 없었다.
+  // 세 주체를 **같은 축**으로 그려야 누가 사고 누가 파는지 비교가 된다.
+  flwmask.addEventListener('click',e=>{if(e.target===flwmask)closeFlow();});
+  function closeFlow(){flwmask.classList.remove('on');}
+  const FLW_C={frgn:'150,56,43',orgn:'150,120,60',prsn:'58,74,99'};
+  const man=v=>{const a=Math.abs(v);
+    if(a>=1e8)return (v/1e8).toFixed(1)+'억주';
+    if(a>=1e4)return Math.round(v/1e4).toLocaleString()+'만주';
+    return Math.round(v).toLocaleString()+'주';};
+
+  function flwBars(rows,key,H){                   // 일별 막대 — 0선 기준 위=매수 아래=매도
+    const mx=Math.max(1,...rows.map(r=>Math.abs(r[key])));
+    return rows.map(r=>{
+      const v=r[key], h=Math.round(Math.abs(v)/mx*(H/2-1)), up=v>=0;
+      return `<span class="fbar" title="${r.date.slice(4,6)}/${r.date.slice(6,8)} ${man(v)}">`+
+        `<i style="height:${up?h:0}px;background:var(--up-c)"></i>`+
+        `<b style="height:${up?0:h}px;background:var(--down-c)"></b></span>`;}).join('');
+  }
+  function flwRow(d,key,H){
+    const s=d[key], net=s.d5;
+    return `<div class="frow">
+      <div class="fh"><i style="background:rgb(${FLW_C[key]})"></i><b>${s.label}</b>
+        <span class="fnum ${s.d1>=0?'up':'down'}">오늘 ${s.d1>=0?'＋':'－'}${man(Math.abs(s.d1))}</span>
+        <span class="fnum ${net>=0?'up':'down'}">5일 ${net>=0?'＋':'－'}${man(Math.abs(net))}</span>
+        <span class="fnum ${s.d20>=0?'up':'down'}">20일 ${s.d20>=0?'＋':'－'}${man(Math.abs(s.d20))}</span></div>
+      <div class="fbars" style="height:${H}px">${flwBars(d.days,key,H)}<u></u></div></div>`;
+  }
+  function flwIntraday(d){
+    const st=d.intraday_step||[];
+    if(!st.length)return '<div class="mnote">오늘 시간대별 기록이 아직 없습니다. 장이 열려 있는 동안 앱을 켜 두면 5분마다 쌓입니다.</div>';
+    const mx=Math.max(1,...st.map(s=>Math.max(Math.abs(s.frgn),Math.abs(s.orgn))));
+    const col=(v,c)=>{const h=Math.round(Math.abs(v)/mx*44);
+      return `<span class="ibar" title="${man(v)}"><i style="height:${v>=0?h:0}px;background:var(--up-c)"></i>`+
+        `<b style="height:${v<0?h:0}px;background:var(--down-c)"></b></span>`;};
+    return `<div class="mlabel" style="margin-top:14px">오늘 시간대별 · 구간마다 얼마나 사고팔았나</div>
+      <div class="ihead"><span>구간</span>${st.map(s=>'<span>'+s.gb+'</span>').join('')}</div>
+      <div class="irow"><span class="ik">외국인</span>${st.map(s=>col(s.frgn)).join('')}</div>
+      <div class="irow"><span class="ik">기관</span>${st.map(s=>col(s.orgn)).join('')}</div>
+      <div class="mnote">개인은 시간대로는 제공되지 않아 일별로만 보입니다 · 기록 ${d.intraday_at||''}</div>`;
+  }
+  async function openFlow(){
+    flwmask.classList.add('on');
+    flwbody.innerHTML='<div class="mintro">불러오는 중…</div>';
+    let d; try{d=await (await fetch('/api/flow/'+CURCODE+'?days=20')).json();}
+    catch(e){flwbody.innerHTML='<div class="mintro">수급을 불러오지 못했습니다.</div>';return;}
+    if(!d.days||!d.days.length){
+      flwbody.innerHTML='<div class="mintro">수급 데이터가 없습니다.'+(d.error?'<br>'+d.error:'')+'</div>';return;}
+    const tot=Math.abs(d.frgn.d5)+Math.abs(d.orgn.d5)+Math.abs(d.prsn.d5)||1;
+    const who=['frgn','orgn','prsn'].map(k=>({k,v:d[k].d5}))
+      .sort((a,b)=>Math.abs(b.v)-Math.abs(a.v))[0];
+    flwbody.innerHTML=
+      `<div class="mintro"><b>${CURNAME||CURCODE}</b> · 최근 ${d.days.length}일 · 막대는 하루치 순매수(위) / 순매도(아래)</div>`+
+      `<div class="mcard" style="padding:9px 12px"><b style="font-size:13px">지난 5일, ${d[who.k].label}이 가장 크게 ${who.v>=0?'샀습니다':'팔았습니다'}</b>
+        <div class="mnote" style="font-style:normal;margin-top:3px">
+        외국인 ${Math.round(Math.abs(d.frgn.d5)/tot*100)}% · 기관 ${Math.round(Math.abs(d.orgn.d5)/tot*100)}% · 개인 ${Math.round(Math.abs(d.prsn.d5)/tot*100)}% (움직인 양 기준)</div></div>`+
+      ['frgn','orgn','prsn'].map(k=>flwRow(d,k,54)).join('')+
+      flwIntraday(d)+
+      `<div class="mfoot">출처 한국투자증권 · 수급은 방향 참고이며 매수 추천이 아닙니다</div>`;
+  }
+
   // ── 종목 검색 ───────────────────────────────────────────────────
   // 예전에는 6자리 코드를 알아야 했다. 이제 "삼"만 쳐도 삼성전자가 맨 위에 나온다.
   let SR={items:[],sel:-1,timer:null,q:''};
@@ -1102,7 +1196,8 @@
       + `<div style="font-size:9.5px;color:var(--ink-faint);line-height:1.4;margin:3px 0 2px;padding-left:2px">${fp.caveat} <a href="${fp.basis[2]}" target="_blank" style="color:var(--ink-faint);text-decoration:none">— ${fp.basis[1]} ↗</a></div>`
     ) : (
       `<div class="vr" title="수급은 온도계(F-62)"><span class="k">외국인(5일)</span><span class="v ${fpos?'up':'down'}">${fpos?'＋':'－'} ${d.flow.foreign_dir} ${fmt(Math.abs(d.flow.foreign_5d))}</span></div>`
-      + `<div class="vr"><span class="k">기관(5일)</span><span class="v ${opos?'up':'down'}">${opos?'＋':'－'} ${d.flow.org_dir} ${fmt(Math.abs(d.flow.org_5d))}</span></div>`);
+      + `<div class="vr"><span class="k">기관(5일)</span><span class="v ${opos?'up':'down'}">${opos?'＋':'－'} ${d.flow.org_dir} ${fmt(Math.abs(d.flow.org_5d))}</span></div>`
+      + (d.flow.person_5d!=null?`<div class="vr" style="cursor:pointer" onclick="openFlow()" title="눌러서 자세히"><span class="k">개인(5일)</span><span class="v ${d.flow.person_5d>=0?'up':'down'}">${d.flow.person_5d>=0?'＋':'－'} ${fmt(Math.abs(d.flow.person_5d))}</span></div>`:''));
     metrics.innerHTML=`
       <div class="vr"><span class="k">다음 저항</span><span class="v">${fmt(L.res)} <span class="${resP>=0?'up':'down'}">(${sign(resP)})</span></span></div>
       <div class="vr"><span class="k">다음 지지</span><span class="v">${fmt(L.sup)} <span class="${supP>=0?'up':'down'}">(${sign(supP)})</span></span></div>
@@ -1785,7 +1880,8 @@
     money:[["🧮","이번 달 배분","여유자금을 어느 종목에 얼마씩 나눌지 계산","openAlloc"],
            ["💼","내 계좌","보유 종목의 쏠림과 위험 점검","openPortfolio"],
            ["📓","기록장","왜 샀는지 남기고, 팔 때 그때 이유를 다시 보기","openJournal"]],
-    stock:[["📋","종목 평가","이 회사가 싼지·잘 버는지 (가치·수익성)","openEval"],
+    stock:[["🏦","수급 — 누가 사고 파나","외국인·기관·개인을 한 자리에서","openFlow"],
+           ["📋","종목 평가","이 회사가 싼지·잘 버는지 (가치·수익성)","openEval"],
            ["✅","체크리스트","항목별 점검과 근거 논문","openCheck"],
            ["📰","뉴스","이 종목 소식과 시장 속보","openNews"]],
     market:[["🌐","시장 지수","코스피·코스닥과 주요 지표","openMarket"],
