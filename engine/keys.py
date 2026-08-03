@@ -251,6 +251,17 @@ def import_files(files):
     if not got:
         return {"ok": False,
                 "msg": "가져올 키를 찾지 못했습니다. " + (" / ".join(skipped) if skipped else "")}
+
+    # 방금 넣은 KIS 로 토큰을 미리 받아둔다.
+    # 안 그러면 **바로 다음 조회 한 번**이 토큰 발급을 기다리다 합성 폴백으로 떨어져,
+    # 키를 넣자마자 엉뚱한 값을 보게 된다(실제로 그랬다).
+    if any("한국투자증권" in g for g in got):
+        try:
+            import kis_kr
+            kis_kr.KISKorea().quote("005930")
+        except Exception:
+            pass
+
     msg = "가져왔습니다 — " + ", ".join(got)
     if skipped:
         msg += f" (건너뜀: {len(skipped)}개)"

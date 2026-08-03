@@ -1,9 +1,8 @@
 {
- "version": "1.7.2",
+ "version": "1.7.3",
  "released": "2026-08-03",
  "notes": [
-  "로고를 또렷하게 바꿨습니다",
-  "파이썬 없이 실행되는 프로그램(EXE) 준비"
+  "키를 넣은 직후에도 바로 실시간 시세가 나옵니다"
  ],
  "min_python": "3.9",
  "requires": [
@@ -14,5 +13,5 @@
   "finance-datareader",
   "pywebview"
  ],
- "sha256": "8acfeecbf385b45fd47ae748cd2bed13b7ed0523dc061bc00013bc3e6a61dba3"
+ "sha256": "8d2fb69f400be4637c7a4dcb0c76c95182a53ef52753673dcb09c77ad437b757"
 }
