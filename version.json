@@ -1,9 +1,8 @@
 {
- "version": "1.6.0",
+ "version": "1.6.1",
  "released": "2026-08-03",
  "notes": [
-  "종목 검색 추가 — 이름만 쳐도 회사 로고와 함께 찾아줍니다",
-  "포트폴리오도 종목명으로 넣을 수 있습니다"
+  "설치가 안 되던 문제를 고쳤습니다"
  ],
  "min_python": "3.9",
  "requires": [
@@ -14,5 +13,5 @@
   "finance-datareader",
   "pywebview"
  ],
- "sha256": "a8a5eddfa726eef55cb95295008dbcf642cd9f1fd534580b3d34c988e07b54c4"
+ "sha256": "9643c15e18f8058c512fbac4361ad77804ea623f90b41a0f3b5b831a6446ee84"
 }

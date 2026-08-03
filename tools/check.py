@@ -149,6 +149,30 @@ def check_encoding():
         print("  --    .ps1 파일 없음")
 
 
+def check_bat():
+    """.bat 안에 한글이 있으면 `chcp 65001` 이 cmd 의 파일 읽기 위치를 어긋나게 만들어
+    명령이 토막난다('on' is not recognized …). 실제로 설치 배치가 그렇게 깨졌다.
+    → 배치는 **순수 ASCII**로 두고 한글은 파이썬에서 출력한다."""
+    print("\n[8] .bat 순수 ASCII 여부(명령 토막남 방지)")
+    found = False
+    for dp, dns, fns in os.walk(ROOT):
+        dns[:] = [d for d in dns if d not in SKIP_DIRS]
+        for fn in fns:
+            if not fn.lower().endswith(".bat"):
+                continue
+            found = True
+            raw = io.open(os.path.join(dp, fn), "rb").read()
+            rel = os.path.relpath(os.path.join(dp, fn), ROOT)
+            try:
+                raw.decode("ascii")
+                _say(True, rel, "ASCII 전용")
+            except UnicodeDecodeError as e:
+                _say(False, rel, f"비ASCII 문자 있음(offset {e.start}) — "
+                                 f"한글은 tools/setup.py 로 옮기세요")
+    if not found:
+        print("  --    .bat 파일 없음")
+
+
 def check_gitignore():
     """.gitignore 는 **줄 맨 앞의 # 만** 주석이다. 꼬리 주석을 붙이면 패턴에 섞여
     규칙이 통째로 무효가 된다. 실제로 update_config.json 이 이것 때문에
@@ -179,6 +203,7 @@ def main():
     check_no_popups()
     check_files()
     check_encoding()
+    check_bat()
     check_gitignore()
     print("\n" + "=" * 60)
     if problems:
