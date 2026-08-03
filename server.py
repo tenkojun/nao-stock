@@ -364,6 +364,30 @@ def api_auth_logout():
     return jsonify(logout(request.headers.get("X-Auth-Token", "")))
 
 
+@app.route("/api/session")
+def api_session():
+    """오늘장 기록 조회 / 캘린더용 날짜 목록.
+    KIS 는 지난 날의 시간대별 수급을 주지 않으므로 **장중에 우리가 쌓은 것**을 읽는다."""
+    import session_rec as S
+    date = request.args.get("date")
+    if request.args.get("dates") == "1" or not date:
+        st = S.status()
+        if not date:
+            st["day"] = S.load(S.today())
+        return jsonify(st)
+    return jsonify({"date": date, "day": S.load(date), "dates": S.dates()[:60]})
+
+
+@app.route("/api/session/record", methods=["POST"])
+def api_session_record():
+    """지금 한 컷 기록(수동) — 동작 확인용."""
+    import session_rec as S
+    try:
+        return jsonify({"ok": True, "snaps": S.record_once(), "status": S.status()})
+    except Exception as e:
+        return jsonify({"ok": False, "msg": f"{type(e).__name__}: {e}"})
+
+
 @app.route("/api/search")
 def api_search():
     """종목 검색 — 코드를 몰라도 이름으로 찾는다. '삼' → 삼성전자·삼성중공업…"""
@@ -850,6 +874,20 @@ def api_ai():
         return jsonify({"ok": True, "answer": txt or json.dumps(j)[:400]})
     except Exception as e:
         return jsonify({"ok": False, "answer": f"AI 호출 오류: {e}"})
+
+
+def _start_session_recorder():
+    """장중 5분마다 시간대별 수급을 기록한다.
+    KIS 는 지난 날의 시간대별 수급을 주지 않으므로, 그때그때 쌓지 않으면 영영 못 본다.
+    서버가 떠 있는 동안에만 돈다(앱을 안 켠 날은 기록이 없다)."""
+    try:
+        import session_rec
+        session_rec.start()
+    except Exception:
+        pass
+
+
+_start_session_recorder()
 
 
 if __name__ == "__main__":
