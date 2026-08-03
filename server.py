@@ -421,6 +421,7 @@ def api_keys():
     prov, act = j.get("provider", ""), j.get("action", "save")
     r = (K.clear(prov) if act == "clear"
          else K.test(prov) if act == "test"
+         else K.import_files(j.get("files")) if act == "import"
          else K.save(prov, j.get("values")))
     r["status"] = K.status()
     return jsonify(r)

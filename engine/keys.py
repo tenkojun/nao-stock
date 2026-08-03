@@ -8,12 +8,14 @@ API 키 보관 — 한 곳에서만 결정한다
 
 읽기 순서
   1) 환경변수 (KIS_SECRET · KRX_AUTH_KEY · ANTHROPIC_API_KEY)
-  2) 사용자 폴더  ~/ft_freqai/user_data/   ← 개발 PC의 기존 관례
-  3) 앱 폴더      data/keys/               ← 설정 화면에서 저장하면 여기
+  2) 앱 폴더      data/keys/               ← 설정 화면 저장분·USB 가져오기분
+  3) 사용자 폴더  ~/ft_freqai/user_data/   ← 개발 PC의 기존 관례(하위 호환)
+
+  ⚠ 앱 폴더가 **먼저**다. 그래야 USB로 가져온 키가 개발 PC의 옛 키에 가려지지 않는다.
 
 쓰기 위치
-  2)번 폴더가 이미 있으면 거기, 없으면 3)번. `data/` 는 업데이트 보존 목록이고
-  패키징·git 에서 제외되므로 키가 배포물에 섞이지 않는다.
+  항상 앱 폴더(data/keys/). `data/` 는 업데이트 보존 목록이고 패키징·git 에서
+  제외되므로 키가 배포물에 섞이지 않고, 앱을 통째로 옮겨도 따라간다.
 
 ⚠ 키 값은 **절대 밖으로 내보내지 않는다.** status() 는 존재 여부와 끝 4자리만 준다.
 """
@@ -32,7 +34,7 @@ KIS_SECTION = os.environ.get("KIS_SECTION", "kr_stocks")
 
 # ── 경로 ──────────────────────────────────────────────────────────
 def _candidates(fname):
-    return [os.path.join(_USER_KEYS, fname), os.path.join(_APP_KEYS, fname)]
+    return [os.path.join(_APP_KEYS, fname), os.path.join(_USER_KEYS, fname)]
 
 
 def _find(fname):
@@ -44,10 +46,9 @@ def _find(fname):
 
 
 def _write_target(fname):
-    """새로 저장할 위치 — 기존 관례 폴더가 있으면 거기, 없으면 앱 안."""
-    base = _USER_KEYS if os.path.isdir(_USER_KEYS) else _APP_KEYS
-    os.makedirs(base, exist_ok=True)
-    return os.path.join(base, fname)
+    """새로 저장할 위치 — 항상 앱 폴더. 앱을 옮기면 키도 같이 간다."""
+    os.makedirs(_APP_KEYS, exist_ok=True)
+    return os.path.join(_APP_KEYS, fname)
 
 
 def kis_path():
@@ -73,8 +74,10 @@ def _read(fname):
 
 
 def _save(fname, data):
-    """원자적 쓰기 — 중간에 꺼져도 기존 파일이 깨지지 않는다."""
-    p = _find(fname) or _write_target(fname)
+    """원자적 쓰기 — 중간에 꺼져도 기존 파일이 깨지지 않는다.
+    ⚠ 항상 앱 폴더에 쓴다. 사용자 폴더의 원본(다른 프로젝트가 쓸 수 있다)은 건드리지 않고,
+       앱 폴더가 우선순위가 높으므로 이 사본이 실제로 쓰인다."""
+    p = _write_target(fname)
     os.makedirs(os.path.dirname(p), exist_ok=True)
     tmp = p + ".tmp"
     with open(tmp, "w", encoding="utf-8") as fp:
@@ -99,8 +102,8 @@ def github():
     공지를 '읽는' 쪽(공개 저장소)은 토큰이 필요 없다. 이 파일은 배포물에 들어가지 않는다."""
     if os.environ.get("GITHUB_TOKEN"):
         return os.environ["GITHUB_TOKEN"].strip()
-    for c in (os.path.join(_USER_KEYS, "github_token.txt"),
-              os.path.join(_APP_KEYS, "github_token.txt")):
+    for c in (os.path.join(_APP_KEYS, "github_token.txt"),
+              os.path.join(_USER_KEYS, "github_token.txt")):
         if os.path.exists(c):
             try:
                 with open(c, encoding="utf-8-sig") as fp:
@@ -128,7 +131,14 @@ def status():
     """설정 화면에 보낼 요약. **키 값 자체는 담지 않는다.**"""
     kis = _read(KIS_FILE).get(KIS_SECTION, {}) or {}
     krx_v, cla_v = krx_auth(), anthropic()
-    where = "사용자 폴더" if os.path.isdir(_USER_KEYS) else "앱 폴더(data/keys)"
+    # 실제로 어느 파일이 쓰이고 있는지 그대로 보고한다(짐작하지 않는다)
+    p = _find(KIS_FILE) or _find(KRX_FILE)
+    if not p:
+        where = "없음"
+    elif os.path.normcase(p).startswith(os.path.normcase(_APP_KEYS)):
+        where = "앱 폴더(data/keys)"
+    else:
+        where = "사용자 폴더(ft_freqai/user_data)"
     return {
         "kis": {"set": bool(kis.get("appkey") and kis.get("appsecret")),
                 "hint": _mask(kis.get("appkey")),
@@ -182,6 +192,69 @@ def save(provider, v):
         return {"ok": True, "msg": "Claude 키를 저장했습니다."}
 
     return {"ok": False, "msg": "알 수 없는 항목입니다."}
+
+
+def import_files(files):
+    """USB 등에서 가져온 키 **파일**을 앱 폴더에 들인다.
+    files: [{"name": "kis_secret.json", "text": "..."}]
+    파일 이름이 달라도 내용을 보고 무엇인지 알아낸다(USB에서 이름이 바뀌는 일이 흔하다)."""
+    got, skipped = [], []
+    for f in (files or []):
+        name = str(f.get("name") or "").strip()
+        text = (f.get("text") or "").strip()
+        if not text:
+            skipped.append(f"{name}: 비어 있음")
+            continue
+        if len(text) > 200_000:
+            skipped.append(f"{name}: 너무 큼")
+            continue
+
+        obj = None
+        try:
+            obj = json.loads(text)
+        except Exception:
+            obj = None
+
+        # ── 무엇인지 판별 ──
+        if isinstance(obj, dict) and any(
+                isinstance(v, dict) and v.get("appkey") and v.get("appsecret")
+                for v in obj.values()):
+            merged = _read(KIS_FILE)
+            merged.update(obj)                       # 여러 섹션이 있어도 합친다
+            _save(KIS_FILE, merged)
+            secs = [k for k, v in obj.items()
+                    if isinstance(v, dict) and v.get("appkey")]
+            got.append(f"한국투자증권 ({', '.join(secs)})")
+        elif isinstance(obj, dict) and obj.get("auth_key"):
+            d = _read(KRX_FILE)
+            d["auth_key"] = str(obj["auth_key"]).strip()
+            _save(KRX_FILE, d)
+            got.append("KRX 인증키")
+        elif isinstance(obj, dict) and obj.get("anthropic"):
+            d = _read(NAO_FILE)
+            d["anthropic"] = str(obj["anthropic"]).strip()
+            _save(NAO_FILE, d)
+            got.append("Claude 키")
+        elif not obj and "krx" in name.lower():        # 인증키만 적힌 txt
+            d = _read(KRX_FILE)
+            d["auth_key"] = text.splitlines()[0].strip()
+            _save(KRX_FILE, d)
+            got.append("KRX 인증키(txt)")
+        elif not obj and text.startswith(("sk-ant-", "sk-")):
+            d = _read(NAO_FILE)
+            d["anthropic"] = text.splitlines()[0].strip()
+            _save(NAO_FILE, d)
+            got.append("Claude 키(txt)")
+        else:
+            skipped.append(f"{name or '이름없음'}: 무슨 키인지 알 수 없음")
+
+    if not got:
+        return {"ok": False,
+                "msg": "가져올 키를 찾지 못했습니다. " + (" / ".join(skipped) if skipped else "")}
+    msg = "가져왔습니다 — " + ", ".join(got)
+    if skipped:
+        msg += f" (건너뜀: {len(skipped)}개)"
+    return {"ok": True, "msg": msg}
 
 
 def clear(provider):

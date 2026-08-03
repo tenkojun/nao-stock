@@ -301,6 +301,7 @@
       <div class="setrow"><span class="setk">자동 새로고침</span><span class="segbtns" id="segRefresh"></span></div>
       <div class="seth">API 연결 · Keys</div>
       <div class="mintro">시세와 수급을 받아오는 열쇠입니다. 이 PC에만 저장되고 화면에는 끝 4자리만 보입니다.</div>
+      <div id="keyimport"></div>
       <div id="keybox"></div>
 
       <div style="font-family:var(--eng);font-size:8px;letter-spacing:.14em;color:var(--ink-faint);text-transform:uppercase;margin-top:14px">설정은 이 PC에 저장됩니다 · 실시세·수급은 KIS 무지연</div>
@@ -592,8 +593,46 @@
     box.innerHTML='<div class="mintro">확인 중…</div>';
     let j; try{ j=await (await fetch('/api/keys',{headers:authHeaders()})).json(); }
     catch(e){ box.innerHTML='<div class="mintro">서버에 연결되지 않아 확인할 수 없습니다.</div>'; return; }
-    KEYADMIN=!!j.admin; renderKeys(j.status);
+    KEYADMIN=!!j.admin; renderKeyImport(); renderKeys(j.status);
   }
+  // USB 등에서 키 **파일**을 통째로 가져오기 — 긴 키를 손으로 옮겨 적지 않아도 된다
+  function renderKeyImport(){
+    const el=document.getElementById('keyimport'); if(!el)return;
+    if(!KEYADMIN){el.innerHTML='';return;}
+    el.innerHTML=`<div class="mcard">
+      <span class="mlabel">USB에서 키 파일 가져오기</span>
+      <div class="mnote" style="font-style:normal;margin-top:0">
+        <b>kis_secret.json</b> · <b>krx_secret.json</b> 파일을 그대로 고르면 됩니다.
+        여러 개를 한 번에 골라도 됩니다.</div>
+      <input type="file" id="keyFiles" multiple accept=".json,.txt,application/json,text/plain"
+             style="margin-top:8px;font-size:12px;max-width:100%">
+      <div style="margin-top:8px"><button class="btn" onclick="keyImport()">가져오기</button></div>
+      <div class="mnote" id="kmsg-import" style="display:none"></div></div>`;
+  }
+  async function keyImport(){
+    const inp=document.getElementById('keyFiles');
+    const fs=[...(inp&&inp.files||[])];
+    const msg=(t,ok)=>{const e=document.getElementById('kmsg-import');if(!e)return;
+      e.style.display='block';e.style.fontStyle='normal';
+      e.style.color=ok?'var(--sage)':'var(--ox)';e.textContent=t;};
+    if(!fs.length){msg('가져올 파일을 골라 주세요.',false);return;}
+    msg('읽는 중…',true);
+    const files=[];
+    for(const f of fs){
+      if(f.size>200000){continue;}
+      files.push({name:f.name,text:await f.text()});
+    }
+    try{
+      const r=await fetch('/api/keys',{method:'POST',
+        headers:Object.assign({'Content-Type':'application/json'},authHeaders()),
+        body:JSON.stringify({action:'import',files})});
+      const j=await r.json();
+      msg(j.msg||'',j.ok);
+      if(j.status)renderKeys(j.status);
+      if(j.ok&&inp)inp.value='';
+    }catch(e){msg('가져오지 못했습니다.',false);}
+  }
+
   function renderKeys(st){
     const box=document.getElementById('keybox');
     box.innerHTML=KEYDEF.map(k=>{
