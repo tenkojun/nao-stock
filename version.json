@@ -1,8 +1,9 @@
 {
- "version": "1.7.0",
+ "version": "1.7.1",
  "released": "2026-08-03",
  "notes": [
-  "USB에 담아온 키 파일을 그대로 불러올 수 있습니다"
+  "로고를 또렷하게 바꿨습니다",
+  "파이썬 없이 실행되는 프로그램(EXE) 준비"
  ],
  "min_python": "3.9",
  "requires": [
@@ -13,5 +14,5 @@
   "finance-datareader",
   "pywebview"
  ],
- "sha256": "869235625456a27d5988443914914750758ebffa02d52662172985c6d6c33d96"
+ "sha256": "2606f460c7275b5553f599fe129a84beb1b5164352a13a7cca25b5fb7b6af9f6"
 }

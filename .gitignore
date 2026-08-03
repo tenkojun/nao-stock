@@ -38,3 +38,7 @@ docs/
 퀀트전문가_질문지.md
 개발방안_및_판단로직정리.md
 version.json.bak
+
+# ── EXE 빌드 산출물 (241MB — 저장소에 넣지 않는다) ─────────────
+dist_exe/
+build_exe/
