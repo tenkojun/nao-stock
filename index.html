@@ -162,6 +162,11 @@
       <div><div class="n">NAO&nbsp;STOCK</div><div class="s">Korea Equity Intelligence</div></div>
     </div>
     <div class="topmeta">
+      <span class="srchbox">
+        <input id="srchIn" placeholder="🔍 종목 검색 (예: 삼성)" autocomplete="off"
+               oninput="srchInput()" onkeydown="srchKey(event)" onfocus="srchInput()">
+        <div id="srchDrop"></div>
+      </span>
       <span>KOSPI <b id="tKospi" class="up">—</b></span><span>KOSDAQ <b id="tKosdaq" class="up">—</b></span>
       <button class="btn nav" data-menu="money">💰 내 돈</button>
       <button class="btn nav" data-menu="stock">📊 이 종목</button>
@@ -310,6 +315,29 @@
 <!-- 헤더 메뉴 (13개 버튼 → 3묶음, 각 항목에 한 줄 설명) -->
 <div id="navMenu" style="display:none;position:fixed;z-index:350;background:var(--card);border:1px solid var(--rule);box-shadow:0 8px 26px rgba(40,34,26,.16);min-width:270px;padding:6px"></div>
 <style>
+  /* ── 종목 검색 ── */
+  .srchbox{position:relative;display:inline-block}
+  #srchIn{width:190px;padding:5px 9px;border:1px solid var(--rule);background:var(--paper-hi);
+    color:var(--ink);font-family:inherit;font-size:13px}
+  #srchIn:focus{outline:none;border-color:var(--ink)}
+  #srchDrop{position:absolute;top:calc(100% + 2px);left:0;z-index:400;min-width:300px;
+    background:var(--card);border:1px solid var(--rule);box-shadow:0 12px 34px rgba(40,34,26,.24);
+    max-height:360px;overflow:auto;display:none}
+  #srchDrop.on{display:block}
+  .sr{display:flex;align-items:center;gap:9px;padding:7px 11px;cursor:pointer;
+    border-bottom:1px solid var(--rule-soft)}
+  .sr:last-child{border-bottom:none}
+  .sr.sel,.sr:hover{background:var(--paper-lo)}
+  .sr .lg,.sr .lgf{width:26px;height:26px;flex:none}
+  .sr .lg{border:1px solid var(--rule-soft);background:#fff;object-fit:contain}
+  .sr .lgf{display:flex;align-items:center;justify-content:center;background:var(--ink);
+    color:var(--paper-hi);font-size:13px;font-weight:700}
+  .sr .nm{font-size:13.5px;color:var(--ink);line-height:1.25}
+  .sr .cd{font-size:10.5px;color:var(--ink-faint);font-family:var(--eng);letter-spacing:.08em}
+  .sr .mk{margin-left:auto;font-size:10px;color:var(--ink-faint);font-family:var(--eng);
+    letter-spacing:.1em}
+  #srchDrop .none{padding:11px;font-size:12.5px;color:var(--ink-faint)}
+
   /* ── 모달 공통 (12개 화면의 여백·글자 통일) ── */
   .mlabel{font-family:var(--eng);font-size:9px;letter-spacing:.13em;color:var(--ink-faint);
           text-transform:uppercase;margin-bottom:5px;display:block}
@@ -689,6 +717,61 @@
       headers:Object.assign({'Content-Type':'application/json'},authHeaders()),
       body:JSON.stringify({action:'delete',id})});
       NC=await r.json(); ncRender();}catch(e){}}
+
+  // ── 종목 검색 ───────────────────────────────────────────────────
+  // 예전에는 6자리 코드를 알아야 했다. 이제 "삼"만 쳐도 삼성전자가 맨 위에 나온다.
+  let SR={items:[],sel:-1,timer:null,q:''};
+  function srchInput(){clearTimeout(SR.timer);SR.timer=setTimeout(srchGo,150);}
+  async function srchGo(){
+    const q=srchIn.value.trim();
+    if(q===SR.q&&srchDrop.classList.contains('on'))return;
+    SR.q=q;
+    if(!q){srchClose();return;}
+    try{const r=await fetch('/api/search?q='+encodeURIComponent(q));
+        const j=await r.json(); SR.items=j.items||[];}
+    catch(e){SR.items=[];}
+    SR.sel=SR.items.length?0:-1; srchRender();
+  }
+  function srchRender(){
+    if(!SR.items.length){
+      srchDrop.innerHTML='<div class="none">'+(SR.q?'찾는 종목이 없습니다.':'')+'</div>';
+      srchDrop.classList.toggle('on',!!SR.q); return;}
+    srchDrop.innerHTML=SR.items.map((s,i)=>`<div class="sr${i===SR.sel?' sel':''}" data-i="${i}">
+        <img class="lg" data-src="${s.logo}" data-ch="${esc(s.name[0])}" alt="">
+        <span><div class="nm">${esc(s.name)}</div><div class="cd">${s.code}</div></span>
+        <span class="mk">${esc(s.market||'')}</span></div>`).join('');
+    // 로고가 없는 종목(404)은 이름 첫 글자 마크로 대체한다
+    srchDrop.querySelectorAll('img.lg').forEach(im=>{
+      im.onerror=()=>{const s=document.createElement('span');
+        s.className='lgf';s.textContent=im.dataset.ch;im.replaceWith(s);};
+      im.src=im.dataset.src;});
+    srchDrop.querySelectorAll('.sr').forEach(el=>
+      el.onclick=()=>srchPick(parseInt(el.dataset.i)));
+    srchDrop.classList.add('on');
+  }
+  function srchPick(i){
+    const s=SR.items[i]; if(!s)return;
+    srchClose(); srchIn.value=''; SR.q='';
+    srchIn.blur(); loadStock(s.code,s.name);
+  }
+  function srchClose(){srchDrop.classList.remove('on');SR.sel=-1;}
+  function srchKey(e){
+    if(e.key==='Escape'){srchClose();srchIn.blur();return;}
+    if(e.key==='ArrowDown'||e.key==='ArrowUp'){
+      if(!SR.items.length)return;
+      e.preventDefault();
+      SR.sel=(SR.sel+(e.key==='ArrowDown'?1:-1)+SR.items.length)%SR.items.length;
+      srchRender();
+      const el=srchDrop.querySelector('.sr.sel'); if(el)el.scrollIntoView({block:'nearest'});
+      return;}
+    if(e.key==='Enter'){
+      e.preventDefault();
+      if(SR.sel>=0&&SR.items[SR.sel]){srchPick(SR.sel);return;}
+      const q=srchIn.value.trim();                 // 코드를 그대로 친 경우
+      if(/^\d{6}$/.test(q)){srchClose();srchIn.value='';loadStock(q,q);}}
+  }
+  document.addEventListener('click',e=>{
+    if(!e.target.closest('.srchbox'))srchClose();});
   setmask.addEventListener('click',e=>{if(e.target===setmask)closeSet();});
   aimask.addEventListener('click',e=>{if(e.target===aimask)closeAI();});
 
@@ -1362,8 +1445,15 @@
   function pfLoad(){try{return JSON.parse(localStorage.getItem('nao_pf')||'{}')}catch(e){return{}}}
   function pfSave(p){localStorage.setItem('nao_pf',JSON.stringify(p));
     if(typeof prefsSave==='function')prefsSave({portfolio:p});}   // 서버에도 보관(업데이트 안전)
-  function pfAdd(){const c=(document.getElementById('pfCode').value||'').trim();const a=parseFloat(document.getElementById('pfAmt').value);
-    if(!/^\d{6}$/.test(c)||!(a>0)){alert('종목코드 6자리와 금액(만원)을 입력하세요');return;}
+  async function pfAdd(){
+    const raw=(document.getElementById('pfCode').value||'').trim();
+    const a=parseFloat(document.getElementById('pfAmt').value);
+    if(!raw||!(a>0)){alert('종목명(또는 코드)과 금액(만원)을 입력하세요');return;}
+    let c=raw;
+    if(!/^\d{6}$/.test(c)){            // 이름으로 넣어도 되게 — 코드를 외울 필요가 없다
+      try{const j=await (await fetch('/api/search?q='+encodeURIComponent(raw)+'&n=1')).json();
+        if(j.items&&j.items.length)c=j.items[0].code;}catch(e){}}
+    if(!/^\d{6}$/.test(c)){alert('그런 종목을 찾지 못했습니다: '+raw);return;}
     const p=pfLoad();p[c]=(p[c]||0)+a;pfSave(p);openPortfolio();}
   function pfRemove(c){const p=pfLoad();delete p[c];pfSave(p);openPortfolio();}
   function closePortfolio(){pfmask.classList.remove('on');}
@@ -1374,7 +1464,7 @@
     const p=pfLoad();const codes=Object.keys(p);
     const wlOpts=WL.map(w=>`<option value="${w[1]}">${w[0]} (${w[1]})</option>`).join('');
     const addForm=`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:10px 0 14px;padding:10px;border:1px dashed var(--rule)">
-      <input list="pfWL" id="pfCode" placeholder="종목코드 6자리" style="width:120px;padding:5px 7px;border:1px solid var(--rule);background:var(--card);font-size:12px">
+      <input list="pfWL" id="pfCode" placeholder="종목명 또는 코드 (예: 삼성전자)" style="width:180px;padding:5px 7px;border:1px solid var(--rule);background:var(--card);font-size:12px">
       <datalist id="pfWL">${wlOpts}</datalist>
       <input id="pfAmt" type="number" min="1" placeholder="금액(만원)" style="width:100px;padding:5px 7px;border:1px solid var(--rule);background:var(--card);font-size:12px">
       <button class="btn" onclick="pfAdd()">＋ 추가</button>

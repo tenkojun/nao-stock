@@ -1,8 +1,9 @@
 {
- "version": "1.5.0",
+ "version": "1.6.0",
  "released": "2026-08-03",
  "notes": [
-  "공지 기능 추가 — 관리자가 올린 알림이 앱에 표시됩니다"
+  "종목 검색 추가 — 이름만 쳐도 회사 로고와 함께 찾아줍니다",
+  "포트폴리오도 종목명으로 넣을 수 있습니다"
  ],
  "min_python": "3.9",
  "requires": [
@@ -13,5 +14,5 @@
   "finance-datareader",
   "pywebview"
  ],
- "sha256": "3bd933184e128cd522d624bd53fb697dd06f42d49e4be6b5066a89b5d984c0eb"
+ "sha256": "a8a5eddfa726eef55cb95295008dbcf642cd9f1fd534580b3d34c988e07b54c4"
 }

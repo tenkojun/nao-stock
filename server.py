@@ -364,6 +364,18 @@ def api_auth_logout():
     return jsonify(logout(request.headers.get("X-Auth-Token", "")))
 
 
+@app.route("/api/search")
+def api_search():
+    """종목 검색 — 코드를 몰라도 이름으로 찾는다. '삼' → 삼성전자·삼성중공업…"""
+    import stocks
+    q = request.args.get("q", "")
+    try:
+        return jsonify({"ok": True, "items": stocks.search(q, int(request.args.get("n", 12))),
+                        "status": stocks.status()})
+    except Exception as e:
+        return jsonify({"ok": False, "items": [], "msg": f"검색 오류: {type(e).__name__}"})
+
+
 @app.route("/api/notice", methods=["GET", "POST"])
 def api_notice():
     """공지 — 읽기는 누구나, 쓰기·삭제는 관리자만.
