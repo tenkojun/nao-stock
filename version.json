@@ -1,8 +1,8 @@
 {
- "version": "1.4.2",
- "released": "2026-08-02",
+ "version": "1.5.0",
+ "released": "2026-08-03",
  "notes": [
-  "소개 페이지에 근거 논문과 검증 방법을 상세히 정리"
+  "공지 기능 추가 — 관리자가 올린 알림이 앱에 표시됩니다"
  ],
  "min_python": "3.9",
  "requires": [
@@ -13,5 +13,5 @@
   "finance-datareader",
   "pywebview"
  ],
- "sha256": "bbc9e1e86e44b6543ec3726296da40f8a735af2aab9305cc2a980fd2dba5048e"
+ "sha256": "3bd933184e128cd522d624bd53fb697dd06f42d49e4be6b5066a89b5d984c0eb"
 }

@@ -94,6 +94,22 @@ def krx_auth():
             or str(_read(KRX_FILE).get("auth_key", "")).strip())
 
 
+def github():
+    """공지 **발행용** GitHub 토큰 — 관리자 PC에만 둔다.
+    공지를 '읽는' 쪽(공개 저장소)은 토큰이 필요 없다. 이 파일은 배포물에 들어가지 않는다."""
+    if os.environ.get("GITHUB_TOKEN"):
+        return os.environ["GITHUB_TOKEN"].strip()
+    for c in (os.path.join(_USER_KEYS, "github_token.txt"),
+              os.path.join(_APP_KEYS, "github_token.txt")):
+        if os.path.exists(c):
+            try:
+                with open(c, encoding="utf-8-sig") as fp:
+                    return fp.read().strip()
+            except Exception:
+                pass
+    return ""
+
+
 # ── 상태(값 노출 없음) ────────────────────────────────────────────
 def _mask(v):
     v = str(v or "")

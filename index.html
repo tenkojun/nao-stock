@@ -169,6 +169,7 @@
       <button class="btn" onclick="openStudy()">📖 공부</button>
       <span id="whoami" style="font-size:11px;color:var(--ink-faint);margin-left:6px" title="로그아웃하려면 누르세요" onclick="if(confirm('로그아웃 하시겠습니까?'))logout()"></span>
       <button class="btn ai" onclick="openAI()">✦ AI 전망</button>
+      <span style="position:relative;cursor:pointer" onclick="openNotice()" title="공지">🔔<span id="ncBadge"></span></span>
       <span><b id="clk">14:32:08</b></span><span style="cursor:pointer" onclick="openSet()" title="설정">⚙</span>
     </div>
   </div>
@@ -252,6 +253,14 @@
   <div class="modal" style="width:min(720px,95vw);height:min(820px,90vh)">
     <div class="mh"><span class="t">🌐 Market Context · 시장 컨텍스트</span><span class="x" onclick="closeMarket()">✕</span></div>
     <div style="padding:14px 18px;overflow:auto" id="mktbody"></div>
+  </div>
+</div>
+
+<!-- 공지 모달 — 관리자가 쓴 글이 GitHub를 거쳐 다른 PC로 전달된다 -->
+<div class="mask" id="ncmask">
+  <div class="modal" style="width:min(720px,95vw);height:min(820px,90vh)">
+    <div class="mh"><span class="t">🔔 공지 · Notice</span><span class="x" onclick="closeNotice()">✕</span></div>
+    <div style="padding:14px 18px;overflow:auto" id="ncbody"></div>
   </div>
 </div>
 
@@ -602,6 +611,84 @@
   async function testKey(p){keyMsg(p,'확인 중…',true);await keyPost(p,'test');}
   async function clearKey(p){if(!confirm('이 키를 지울까요? 시세가 나오지 않을 수 있습니다.'))return;
     await keyPost(p,'clear');}
+
+  // ── 공지 ────────────────────────────────────────────────────────
+  // PC마다 서버가 따로 돌기 때문에 GitHub 저장소를 통로로 쓴다.
+  // 진짜 실시간(푸시)이 아니라 폴링 — 앱을 켤 때 + 3분 간격.
+  let NC={admin:false,unread:0,notices:[]}, ncTimer=null;
+  const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  ncmask.addEventListener('click',e=>{if(e.target===ncmask)closeNotice();});
+  function closeNotice(){ncmask.classList.remove('on');}
+
+  async function ncLoad(force){
+    try{const r=await fetch('/api/notice'+(force?'?force=1':''),{headers:authHeaders()});
+        NC=await r.json();}catch(e){return;}
+    const b=document.getElementById('ncBadge'); if(!b)return;
+    b.textContent=NC.unread?NC.unread:'';
+    b.style.cssText=NC.unread?'position:absolute;top:-7px;right:-9px;min-width:15px;height:15px;'
+      +'line-height:15px;padding:0 4px;background:var(--ox);color:var(--paper-hi);border-radius:8px;'
+      +'font-family:var(--eng);font-size:9px;text-align:center':'';
+    if(ncmask.classList.contains('on'))ncRender();
+  }
+  function ncStartPolling(){
+    if(ncTimer)return;
+    ncLoad(); ncTimer=setInterval(()=>ncLoad(),180000);   // 3분마다
+  }
+
+  function ncRender(){
+    const write=NC.admin?`<div class="mcard">
+        <span class="mlabel">새 공지 쓰기</span>
+        <input id="ncTitle" placeholder="제목" maxlength="80"
+          style="width:100%;padding:7px 9px;border:1px solid var(--rule);background:var(--paper-hi);color:var(--ink);font-family:inherit;font-size:14px">
+        <textarea id="ncBody" rows="4" placeholder="내용" maxlength="4000"
+          style="width:100%;margin-top:6px;padding:7px 9px;border:1px solid var(--rule);background:var(--paper-hi);color:var(--ink);font-family:inherit;font-size:14px;resize:vertical"></textarea>
+        <div style="display:flex;gap:6px;align-items:center;margin-top:8px">
+          <button class="btn" onclick="ncPublish()">올리기</button>
+          <span style="font-size:11px;color:var(--ox)">⚠ 공개 저장소에 올라갑니다 — 계좌·수익률 등 개인정보는 쓰지 마세요</span>
+        </div>
+        <div class="mnote" id="ncMsg" style="display:none"></div></div>`:'';
+    const list=(NC.notices||[]).map(n=>`<div class="mcard" style="${n.unread?'border-left:3px solid var(--ox)':''}">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+          <b style="font-size:14.5px">${n.unread?'<span style="color:var(--ox)">● </span>':''}${esc(n.title)}</b>
+          <span style="font-size:11px;color:var(--ink-faint);white-space:nowrap">${esc(n.at)}</span>
+        </div>
+        <div style="font-size:13.5px;color:var(--ink-soft);line-height:1.6;margin-top:6px;white-space:pre-wrap">${esc(n.body)}</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:7px">
+          <span style="font-size:10.5px;color:var(--ink-faint)">${esc(n.author||'')}</span>
+          ${NC.admin?`<span style="font-size:11px;color:var(--ink-faint);cursor:pointer" onclick="ncDelete('${n.id}')">삭제</span>`:''}
+        </div></div>`).join('')
+      ||`<div class="mintro">${NC.ok===false?esc(NC.msg||'불러오지 못했습니다.'):'아직 공지가 없습니다.'}</div>`;
+    ncbody.innerHTML=write+list+
+      `<div class="mfoot">몇 분 간격으로 확인합니다${NC.fetched?' · 마지막 확인 '+esc(NC.fetched):''}</div>`;
+  }
+  function openNotice(){ncmask.classList.add('on');
+    ncbody.innerHTML='<div class="mintro">불러오는 중…</div>';
+    ncLoad(true).then(()=>{ncRender();ncMarkRead();});}
+  async function ncMarkRead(){
+    if(!NC.unread)return;
+    try{const r=await fetch('/api/notice',{method:'POST',
+      headers:Object.assign({'Content-Type':'application/json'},authHeaders()),
+      body:JSON.stringify({action:'read'})});
+      const j=await r.json(); NC=Object.assign(NC,j); ncLoad();}catch(e){}}
+  function ncMsg(t,ok){const el=document.getElementById('ncMsg');if(!el)return;
+    el.style.display='block';el.style.fontStyle='normal';
+    el.style.color=ok?'var(--sage)':'var(--ox)';el.textContent=t;}
+  async function ncPublish(){
+    const t=document.getElementById('ncTitle'),b=document.getElementById('ncBody');
+    if(!t.value.trim()){ncMsg('제목을 입력해 주세요.',false);return;}
+    ncMsg('올리는 중…',true);
+    try{const r=await fetch('/api/notice',{method:'POST',
+      headers:Object.assign({'Content-Type':'application/json'},authHeaders()),
+      body:JSON.stringify({action:'publish',title:t.value,body:b.value})});
+      const j=await r.json(); NC=j; ncRender();
+      if(j.ok){t.value='';b.value='';}
+      ncMsg(j.msg||'',j.ok);}catch(e){ncMsg('올리지 못했습니다.',false);}}
+  async function ncDelete(id){
+    if(!confirm('이 공지를 지울까요?'))return;
+    try{const r=await fetch('/api/notice',{method:'POST',
+      headers:Object.assign({'Content-Type':'application/json'},authHeaders()),
+      body:JSON.stringify({action:'delete',id})});
+      NC=await r.json(); ncRender();}catch(e){}}
   setmask.addEventListener('click',e=>{if(e.target===setmask)closeSet();});
   aimask.addEventListener('click',e=>{if(e.target===aimask)closeAI();});
 
@@ -1584,6 +1671,7 @@
     bootProgress((AUTH.user?AUTH.user.name+'님, ':'')+'시세를 불러오는 중입니다…');
     applySet();
     loadMarketIndices(); loadMacro();
+    ncStartPolling();                        // 공지 확인 — 시작 시 1회 + 3분 간격
     loadStock('005930','삼성전자','D');
     setTimeout(bootDone,1400);
   }

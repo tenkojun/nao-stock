@@ -33,6 +33,7 @@ EXCLUDE_DIRS = {"data", "backup", "__pycache__", "dist", ".git", ".claude",
 EXCLUDE_FILES = {"update_config.json", "krx api.txt", "kis_secret.json",
                  "krx_secret.json", ".gitignore",
                  "CLAUDE.md", "version.json.bak",
+                 "notices.json",              # 공지는 GitHub에서 받아온다 — 사본을 넣으면 헷갈린다
                  "퀀트전문가_질문지.md", "개발방안_및_판단로직정리.md"}
 EXCLUDE_EXT = {".pyc", ".pyo", ".zip", ".log"}
 

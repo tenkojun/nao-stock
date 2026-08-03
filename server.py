@@ -364,6 +364,34 @@ def api_auth_logout():
     return jsonify(logout(request.headers.get("X-Auth-Token", "")))
 
 
+@app.route("/api/notice", methods=["GET", "POST"])
+def api_notice():
+    """공지 — 읽기는 누구나, 쓰기·삭제는 관리자만.
+    PC마다 서버가 따로 도는 구조라 GitHub 저장소를 통로로 쓴다(engine/notice.py)."""
+    from auth import whoami
+    import notice as N
+    u = whoami(request.headers.get("X-Auth-Token", ""))
+    uid = (u or {}).get("id", "father")
+    is_admin = bool(u and u.get("role") == "admin")
+    if request.method == "GET":
+        r = N.board(uid, force=request.args.get("force") == "1")
+        r["admin"] = is_admin
+        return jsonify(r)
+    j = request.get_json(silent=True) or {}
+    act = j.get("action", "publish")
+    if act == "read":                      # 읽음 표시는 본인 것이므로 관리자가 아니어도 된다
+        N.mark_read(uid, j.get("ids"))
+        return jsonify(N.board(uid))
+    if not is_admin:
+        return jsonify({"ok": False, "msg": "관리자만 쓸 수 있습니다."})
+    res = N.remove(j.get("id")) if act == "delete" else \
+        N.publish(j.get("title"), j.get("body"), (u or {}).get("name", "관리자"))
+    out = N.board(uid, force=True)          # 갱신된 목록에
+    out["ok"], out["msg"] = res["ok"], res["msg"]   # 방금 한 작업의 결과를 얹는다
+    out["admin"] = True                     # (순서를 바꾸면 board 의 ok/msg 가 덮어쓴다)
+    return jsonify(out)
+
+
 @app.route("/api/keys", methods=["GET", "POST"])
 def api_keys():
     """API 키 상태 조회 / 저장 / 연결시험.
