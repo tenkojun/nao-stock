@@ -1,8 +1,9 @@
 {
- "version": "1.7.3",
+ "version": "1.7.4",
  "released": "2026-08-03",
  "notes": [
-  "키를 넣은 직후에도 바로 실시간 시세가 나옵니다"
+  "5분봉 화면을 정리했습니다 — 겹쳐 보이던 표시를 꼭 필요한 것만 남겼습니다",
+  "5분봉을 최근 3거래일까지 볼 수 있습니다"
  ],
  "min_python": "3.9",
  "requires": [
@@ -13,5 +14,5 @@
   "finance-datareader",
   "pywebview"
  ],
- "sha256": "8d2fb69f400be4637c7a4dcb0c76c95182a53ef52753673dcb09c77ad437b757"
+ "sha256": "bff19bd2adc5d0d151fd7658b13635e365ae275366448b03c00cacf9582677bf"
 }

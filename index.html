@@ -841,6 +841,7 @@
       if(yH==null||yL==null){el.style.display='none';continue;}
       el.style.display=''; el.style.top=yH+'px'; el.style.height=Math.max(2,yL-yH)+'px';
     }
+    if(typeof thinLabels==='function')thinLabels();   // 확대·이동해도 라벨이 안 겹치게
   }
   function initChart(){
     if(chart)return;
@@ -958,8 +959,29 @@
   function addBox(lo,hi,col,a,label,dashed){
     const el=document.createElement('div');el.dataset.lo=lo;el.dataset.hi=hi;
     el.style.cssText='position:absolute;left:0;right:58px;background:rgba('+col+','+a+');border-top:1px '+(dashed?'dashed':'solid')+' rgba('+col+',.55);border-bottom:1px '+(dashed?'dashed':'solid')+' rgba('+col+',.55)';
-    el.innerHTML='<span style="position:absolute;left:5px;top:0;transform:translateY(-50%);font:600 8.5px ui-monospace,monospace;color:rgb('+col+');background:var(--card);padding:0 3px;white-space:nowrap">'+label+'</span>';
+    if(label)el.innerHTML='<span class="zlab" style="position:absolute;left:5px;top:0;transform:translateY(-50%);font:600 8.5px ui-monospace,monospace;color:rgb('+col+');background:var(--card);padding:0 3px;white-space:nowrap">'+label+'</span>';
     srlayer.appendChild(el);
+  }
+  // 라벨이 서로 겹치면 읽을 수가 없다(9개가 같은 자리에 쌓였던 적이 있다).
+  // 위에서부터 훑으며 앞 라벨과 12px 안에 겹치는 것은 숨긴다.
+  function thinLabels(){
+    const labs=[...srlayer.querySelectorAll('.zlab')]
+      .map(e=>({e,y:e.getBoundingClientRect().top}))
+      .filter(o=>o.y>0).sort((a,b)=>a.y-b.y);
+    let last=-999;
+    labs.forEach(o=>{
+      if(o.y-last<12){o.e.style.visibility='hidden';}
+      else{o.e.style.visibility='visible';last=o.y;}
+    });
+  }
+  // 현재가에서 가까운 것부터 n개만. 여러 날치를 받으면서 ±5% 씩 떨어진 구간까지
+  // 잡히는데, 5분봉 판단에는 쓸모가 없어 maxPct 밖은 아예 뺀다.
+  function nearest(list,n,px,maxPct){
+    const lim=(maxPct||3)/100;
+    return [...(list||[])]
+      .filter(z=>Math.abs(((z.lo+z.hi)/2)/px-1)<=lim)
+      .sort((a,b)=>Math.abs(((a.lo+a.hi)/2)-px)-Math.abs(((b.lo+b.hi)/2)-px))
+      .slice(0,n);
   }
   async function loadIntraday(code){
     initChart(); sLive.textContent="분봉 분석 중…";
@@ -967,8 +989,12 @@
     const bars=d.bars||[];
     if(!bars.length){sLive.textContent='분봉 데이터 없음(장중 아님)';ovlCons.innerHTML='<div class="ot">Microstructure</div><div style="font-size:12px">분봉 데이터가 없습니다(장 시작 전이거나 휴장).</div>';return;}
     sLive.textContent='● 실시간 · KIS ('+(CURTF==='1m'?'1분':'5분')+')';
+    // 여러 날치가 올 수 있으므로 봉이 가진 날짜를 쓴다(없으면 오늘 — 옛 응답 호환)
     const nw=new Date(),Y=nw.getFullYear(),Mo=nw.getMonth(),Dy=nw.getDate();
-    const ts=b=>Math.floor(Date.UTC(Y,Mo,Dy,+b.time.slice(0,2),+b.time.slice(2,4))/1000);
+    const ts=b=>b.date
+      ? Math.floor(Date.UTC(+b.date.slice(0,4),+b.date.slice(4,6)-1,+b.date.slice(6,8),
+                            +b.time.slice(0,2),+b.time.slice(2,4))/1000)
+      : Math.floor(Date.UTC(Y,Mo,Dy,+b.time.slice(0,2),+b.time.slice(2,4))/1000);
     const cd=bars.map(b=>({time:ts(b),open:b.open,high:b.high,low:b.low,close:b.close}));
     const vd=bars.map(b=>({time:ts(b),value:b.volume,color:b.close>=b.open?'rgba(122,32,24,.35)':'rgba(58,74,99,.35)'}));
     chart.applyOptions({timeScale:{timeVisible:true,secondsVisible:false}});
@@ -980,19 +1006,24 @@
     if(d.vp){pl(d.vp.poc,'#7a2018',S.Solid,'POC 최다거래');}
     if(d.structure){if(d.structure.swing_high)pl(d.structure.swing_high,'rgba(150,56,43,.55)',S.LargeDashed,'직전 고점');if(d.structure.swing_low)pl(d.structure.swing_low,'rgba(58,74,99,.55)',S.LargeDashed,'직전 저점');}
     srlayer.innerHTML='';
-    // ① 밸류에어리어(거래 70% 집중 구간) 블록 — 가장 중요한 '가격이 머문 곳'
-    if(d.vp&&d.vp.val&&d.vp.vah)addBox(d.vp.val,d.vp.vah,'150,120,60',0.10,'밸류(거래 70% 구간) '+fmt(d.vp.val)+'~'+fmt(d.vp.vah));
-    // ② 지지·저항 존 블록 (인트라데이)
-    (d.sr_zones||[]).forEach(z=>addBox(z.lo,z.hi,z.type==='res'?'150,56,43':'58,74,99',0.05+z.strength*0.14,
-      (z.type==='res'?'저항 ':'지지 ')+fmt(z.mid)+' · '+z.kind.split(' · ')[0]));
-    // ③ FVG(급하게 지나가 거래가 비어있는 구간 — 되돌아와 채우는 경향)
-    (d.fvg||[]).forEach(z=>addBox(z.lo,z.hi,z.type==='bull'?'95,113,69':'150,56,43',0.15,
-      '빈구간 FVG '+(z.type==='bull'?'▲상승중':'▼하락중')+' '+fmt(z.mid)));
-    // ④ 오더블럭(큰손이 방향을 틀기 직전 마지막 반대 캔들 — 되돌림 시 반응 자리)
-    (d.ob||[]).forEach(z=>addBox(z.lo,z.hi,z.type==='bull'?'95,113,69':'150,56,43',0.10,
-      '오더블럭 '+(z.type==='bull'?'매수 흔적':'매도 흔적')+' '+fmt(Math.round((z.lo+z.hi)/2)),true));
-    positionZones();
-    const vN=Math.min(cd.length,64); chart.timeScale().setVisibleLogicalRange({from:cd.length-vN,to:cd.length+3});
+    // 구간을 전부 그리면 라벨이 겹쳐 아무것도 못 읽는다.
+    // **현재가에서 가까운 것만 카테고리별 2개**로 줄인다.
+    const px=bars[bars.length-1].close;
+    // ① 밸류에어리어(거래 70% 집중 구간) — 가격이 머문 곳
+    if(d.vp&&d.vp.val&&d.vp.vah)addBox(d.vp.val,d.vp.vah,'150,120,60',0.08,'밸류 '+fmt(d.vp.val)+'~'+fmt(d.vp.vah));
+    // ② 지지·저항 존 — 가까운 2개
+    nearest(d.sr_zones,2,px).forEach(z=>addBox(z.lo,z.hi,z.type==='res'?'150,56,43':'58,74,99',
+      0.05+z.strength*0.10,(z.type==='res'?'저항 ':'지지 ')+fmt(z.mid)));
+    // ③ FVG(급히 지나가 거래가 빈 구간) — 가까운 2개
+    nearest(d.fvg,2,px).forEach(z=>addBox(z.lo,z.hi,z.type==='bull'?'95,113,69':'150,56,43',0.12,
+      'FVG '+(z.type==='bull'?'▲':'▼')+' '+fmt(z.mid)));
+    // ④ 오더블럭 — 가까운 2개
+    nearest(d.ob,2,px).forEach(z=>addBox(z.lo,z.hi,z.type==='bull'?'95,113,69':'150,56,43',0.08,
+      '오더블럭 '+(z.type==='bull'?'매수':'매도')+' '+fmt(Math.round((z.lo+z.hi)/2)),true));
+    positionZones(); thinLabels();
+    // 여러 날을 받아왔으므로 하루치보다 넓게 보여 맥락이 잡히게 한다(5분봉 1세션 ≈ 78개)
+    const vN=Math.min(cd.length,CURTF==='1m'?90:120);
+    chart.timeScale().setVisibleLogicalRange({from:cd.length-vN,to:cd.length+3});
     // 인트라데이 전용 범례(용어를 쉬운 말로 설명)
     const lgEl=document.getElementById('legend');
     if(lgEl){if(!lgEl.dataset.daily)lgEl.dataset.daily=lgEl.innerHTML;

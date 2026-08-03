@@ -235,6 +235,69 @@ class KISKorea:
                 b["close"] = r["c"]; b["volume"] += r["v"]
         return [buckets[k] for k in sorted(buckets)]
 
+    def minute_bars_days(self, code: str, interval: int = 5, days: int = 3):
+        """**여러 거래일** 분봉. 당일치만 주는 inquire-time-itemchartprice 대신
+        일자별 TR(FHKST03010230)을 날짜별로 페이지네이션한다(한 번에 120건).
+
+        반환: 오름차순 [{date'YYYYMMDD', time'HHMM', open, high, low, close, volume}]
+        ⚠ 날짜를 함께 돌려줘야 화면에서 여러 날을 이어 붙일 수 있다."""
+        import datetime as _dt
+        raw = {}                                     # (date, HHMMSS) -> ohlcv
+        day = _dt.date.today()
+        got_days = 0
+        guard = 0
+        while got_days < max(1, days) and guard < 20:
+            guard += 1
+            if day.weekday() >= 5:                   # 주말 건너뛰기
+                day -= _dt.timedelta(days=1)
+                continue
+            ds = day.strftime("%Y%m%d")
+            hour, seen = "153000", 0
+            for _ in range(6):                       # 09:00~15:30 ≈ 390분 → 120건씩 4~5회
+                j = self._get(
+                    "/uapi/domestic-stock/v1/quotations/inquire-time-dailychartprice",
+                    "FHKST03010230",
+                    {"FID_COND_MRKT_DIV_CODE": "J", "FID_INPUT_ISCD": code,
+                     "FID_INPUT_HOUR_1": hour, "FID_INPUT_DATE_1": ds,
+                     "FID_PW_DATA_INCU_YN": "N", "FID_FAKE_TICK_INCU_YN": "N"})
+                out = [x for x in j.get("output2", []) if x.get("stck_cntg_hour")]
+                if not out:
+                    break
+                for x in out:
+                    t = x["stck_cntg_hour"]
+                    raw[(x.get("stck_bsop_date", ds), t)] = {
+                        "o": _f(x["stck_oprc"]), "h": _f(x["stck_hgpr"]),
+                        "l": _f(x["stck_lwpr"]), "c": _f(x["stck_prpr"]),
+                        "v": _f(x["cntg_vol"])}
+                seen += len(out)
+                earliest = min(out, key=lambda x: x["stck_cntg_hour"])["stck_cntg_hour"]
+                if earliest <= "090100":
+                    break
+                hour = "%04d00" % (int(earliest[:4]) - 1)
+            if seen:
+                got_days += 1
+            day -= _dt.timedelta(days=1)
+
+        if not raw:
+            return []
+        buckets = {}
+        for (ds, t) in sorted(raw):
+            hhmm = int(t[:4])
+            tot = (hhmm // 100) * 60 + (hhmm % 100)
+            key = (tot // interval) * interval
+            kk = "%02d%02d" % (key // 60, key % 60)
+            b = buckets.get((ds, kk))
+            r = raw[(ds, t)]
+            if b is None:
+                buckets[(ds, kk)] = {"date": ds, "time": kk, "open": r["o"], "high": r["h"],
+                                     "low": r["l"], "close": r["c"], "volume": r["v"]}
+            else:
+                b["high"] = max(b["high"], r["h"])
+                b["low"] = min(b["low"], r["l"])
+                b["close"] = r["c"]
+                b["volume"] += r["v"]
+        return [buckets[k] for k in sorted(buckets)]
+
     def ranking_volume(self, top: int = 15):
         """거래대금 상위(주도주). TR FHPST01710000 volume-rank. [확인]"""
         j = self._get("/uapi/domestic-stock/v1/quotations/volume-rank",

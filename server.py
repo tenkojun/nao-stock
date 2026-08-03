@@ -555,17 +555,34 @@ def api_flowos():
 def api_intraday(code):
     """저타임프레임 미시구조 분석 (5분봉 등) — Volume Profile·SMC·오더플로우 근사."""
     interval = int(request.args.get("interval", 5))
+    days = max(1, min(5, int(request.args.get("days", 3))))
     try:
         from kis_kr import KISKorea
         from microstructure import analyze_micro
-        bars = KISKorea().minute_bars(code, interval=interval)
-        out = analyze_micro(bars, interval)
-        if bars:                                  # 인트라데이 지지·저항 존(블록용)
+        k = KISKorea()
+        # 당일치만 보면 맥락이 없다 → 최근 며칠을 이어 붙인다(1분봉은 양이 많아 당일만)
+        bars = (k.minute_bars(code, interval=interval) if interval < 5 or days <= 1
+                else k.minute_bars_days(code, interval=interval, days=days))
+        if not bars:                                  # 여러 날 실패 시 당일치로 물러선다
+            bars = k.minute_bars(code, interval=interval)
+        # ⚠ 차트는 여러 날을 보여주되 **분석은 최근 세션만** 쓴다.
+        #    3일치로 볼륨프로파일을 내면 밸류가 202,000~250,750 처럼 화면을 통째로
+        #    덮어 아무 의미가 없다(실제로 그렇게 나왔다).
+        last_day = bars[-1].get("date") if bars else None
+        sess = [b for b in bars if b.get("date") == last_day] if last_day else bars
+        if len(sess) < 10:                        # 장 시작 직후 등 표본이 너무 적으면 전체로
+            sess = bars
+
+        out = analyze_micro(sess, interval)
+        out["bars"] = bars                        # 화면에는 여러 날을 그린다
+        out["session_date"] = last_day
+        out["session_bars"] = len(sess)
+        if sess:                                  # 인트라데이 지지·저항 존(블록용)
             try:
                 from levels_sr import sr_zones
-                out["sr_zones"] = sr_zones([b["open"] for b in bars], [b["high"] for b in bars],
-                                           [b["low"] for b in bars], [b["close"] for b in bars],
-                                           [b["volume"] for b in bars], bars[-1]["close"],
+                out["sr_zones"] = sr_zones([b["open"] for b in sess], [b["high"] for b in sess],
+                                           [b["low"] for b in sess], [b["close"] for b in sess],
+                                           [b["volume"] for b in sess], sess[-1]["close"],
                                            max_side=2)
             except Exception:
                 out["sr_zones"] = []
