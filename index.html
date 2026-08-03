@@ -32,7 +32,24 @@
   .chartbox .zoomhint{position:absolute;right:8px;bottom:6px;font-family:var(--eng);font-size:8px;letter-spacing:.14em;color:var(--ink-faint);text-transform:uppercase;pointer-events:none;opacity:.7}
   .ovl{position:absolute;z-index:6;background:var(--ovl-bg);border:1px solid var(--rule);padding:8px 11px;font-size:12px;max-width:250px;pointer-events:none;box-shadow:0 4px 14px rgba(0,0,0,.08)}
   .ovl .ot{font-family:var(--eng);font-size:8px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:4px}
-  .ovl.tr{top:8px;right:8px}.ovl.bl{left:8px;bottom:26px}
+  /* 오른쪽 위 패널이 가격축(약 58px)과 캔들을 덮지 않도록 안쪽으로 물린다 */
+  .ovl.tr{top:8px;right:66px;max-height:calc(100% - 40px);overflow:auto;pointer-events:auto}
+  .ovl.bl{left:8px;bottom:26px}
+  .ovl .warn{background:rgba(150,56,43,.13);border:1px solid var(--ox);padding:5px 7px;
+    margin-bottom:6px;font-size:10.5px;line-height:1.45;color:var(--ink);cursor:pointer}
+  .ovl .warn .more{display:none;margin-top:4px}
+  .ovl .warn.open .more{display:block}
+  /* 구간 목록 — 차트 아래 가로 줄(캔들을 가리지 않는다) */
+  .zonebar{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;padding:5px 4px 0;
+    min-height:0}
+  .zonebar:empty{display:none}
+  .zonebar .zttl{font-family:var(--eng);font-size:8px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--ink-faint)}
+  .zrow{display:inline-flex;align-items:center;gap:5px;font-size:11px;white-space:nowrap}
+  .zrow i{width:9px;height:9px;flex:none;display:inline-block}
+  .zrow .zn{color:var(--ink-soft)}
+  .zrow .zp{font-family:ui-monospace,monospace;color:var(--ink)}
+  .zrow .zd{font-family:ui-monospace,monospace;font-size:10px}
   .ovl:empty{display:none}
   .ovl .big2{font-family:var(--eng);font-weight:600;font-size:12.5px}
   .ovl .cv{display:flex;justify-content:space-between;gap:14px;padding:1px 0;font-size:11.5px}
@@ -221,6 +238,7 @@
         <div class="ovl tr" id="ovlCons"></div>
         <div class="ovl bl" id="ovlTf"></div>
         <div class="zoomhint">휠=시간확대 · 드래그=이동 · 오른쪽축 드래그=가격확대 · 더블클릭=자동맞춤</div></div>
+      <div class="zonebar" id="zonebar"></div>
       <div class="legend" id="legend">
         <span class="lg" data-k="flow"><i style="border-top:0"></i>▲ 수급 유입</span>
         <span class="lg"><i style="border-top:2px solid rgba(169,118,47,.95)"></i>20일선</span>
@@ -983,6 +1001,8 @@
       .sort((a,b)=>Math.abs(((a.lo+a.hi)/2)-px)-Math.abs(((b.lo+b.hi)/2)-px))
       .slice(0,n);
   }
+  let ZONES=[];                      // 차트에 그린 띠들 — 이름·가격은 패널 목록으로 보여준다
+  function warnToggle(el){el.classList.toggle('open');}
   async function loadIntraday(code){
     initChart(); sLive.textContent="분봉 분석 중…";
     let d; try{const iv=CURTF==='1m'?1:5;const r=await fetch('/api/intraday/'+code+'?interval='+iv);d=await r.json();}catch(e){sLive.textContent='분봉 오류';return;}
@@ -1006,21 +1026,22 @@
     if(d.vp){pl(d.vp.poc,'#7a2018',S.Solid,'POC 최다거래');}
     if(d.structure){if(d.structure.swing_high)pl(d.structure.swing_high,'rgba(150,56,43,.55)',S.LargeDashed,'직전 고점');if(d.structure.swing_low)pl(d.structure.swing_low,'rgba(58,74,99,.55)',S.LargeDashed,'직전 저점');}
     srlayer.innerHTML='';
-    // 구간을 전부 그리면 라벨이 겹쳐 아무것도 못 읽는다.
-    // **현재가에서 가까운 것만 카테고리별 2개**로 줄인다.
+    // 차트에는 **띠만** 그리고, 이름·가격은 오른쪽 패널에 목록으로 낸다.
+    // 라벨을 캔들 위에 얹으면 겹쳐서 못 읽고, 숨기면 정보가 사라진다.
     const px=bars[bars.length-1].close;
-    // ① 밸류에어리어(거래 70% 집중 구간) — 가격이 머문 곳
-    if(d.vp&&d.vp.val&&d.vp.vah)addBox(d.vp.val,d.vp.vah,'150,120,60',0.08,'밸류 '+fmt(d.vp.val)+'~'+fmt(d.vp.vah));
-    // ② 지지·저항 존 — 가까운 2개
-    nearest(d.sr_zones,2,px).forEach(z=>addBox(z.lo,z.hi,z.type==='res'?'150,56,43':'58,74,99',
-      0.05+z.strength*0.10,(z.type==='res'?'저항 ':'지지 ')+fmt(z.mid)));
-    // ③ FVG(급히 지나가 거래가 빈 구간) — 가까운 2개
-    nearest(d.fvg,2,px).forEach(z=>addBox(z.lo,z.hi,z.type==='bull'?'95,113,69':'150,56,43',0.12,
-      'FVG '+(z.type==='bull'?'▲':'▼')+' '+fmt(z.mid)));
-    // ④ 오더블럭 — 가까운 2개
-    nearest(d.ob,2,px).forEach(z=>addBox(z.lo,z.hi,z.type==='bull'?'95,113,69':'150,56,43',0.08,
-      '오더블럭 '+(z.type==='bull'?'매수':'매도')+' '+fmt(Math.round((z.lo+z.hi)/2)),true));
-    positionZones(); thinLabels();
+    ZONES=[];
+    const addZ=(lo,hi,col,a,name,dashed)=>{
+      addBox(lo,hi,col,a,'',dashed);
+      ZONES.push({name,col,mid:(lo+hi)/2,lo,hi});
+    };
+    if(d.vp&&d.vp.val&&d.vp.vah)addZ(d.vp.val,d.vp.vah,'150,120,60',0.08,'밸류 구간');
+    nearest(d.sr_zones,2,px).forEach(z=>addZ(z.lo,z.hi,z.type==='res'?'150,56,43':'58,74,99',
+      0.05+z.strength*0.10,z.type==='res'?'저항':'지지'));
+    nearest(d.fvg,2,px).forEach(z=>addZ(z.lo,z.hi,z.type==='bull'?'95,113,69':'150,56,43',0.12,
+      'FVG '+(z.type==='bull'?'▲':'▼')));
+    nearest(d.ob,2,px).forEach(z=>addZ(z.lo,z.hi,z.type==='bull'?'95,113,69':'150,56,43',0.08,
+      '오더블럭 '+(z.type==='bull'?'매수':'매도'),true));
+    positionZones();
     // 여러 날을 받아왔으므로 하루치보다 넓게 보여 맥락이 잡히게 한다(5분봉 1세션 ≈ 78개)
     const vN=Math.min(cd.length,CURTF==='1m'?90:120);
     chart.timeScale().setVisibleLogicalRange({from:cd.length-vN,to:cd.length+3});
@@ -1036,16 +1057,32 @@
       <span class="lg"><i style="border-top:2px dashed rgba(150,56,43,.55)"></i>직전 고·저점</span>`;}
     const del=d.delta||{}, bos=(d.structure||{}).bos;
     ovlCons.style.display='';
-    ovlCons.innerHTML='<div style="background:rgba(150,56,43,.14);border:1px solid var(--ox);padding:6px 8px;margin-bottom:7px;font-size:11px;line-height:1.45;color:var(--ink)">'+
-      '<b style="color:var(--ox)">⚠ 참고 전용 화면입니다</b><br>여기 지표들(오더블럭·FVG·볼륨프로파일)은 <b>학술적으로 검증된 적이 없고</b>, 과거 분봉이 없어 저희가 검증할 수도 없습니다. '+
-      '장기보유(수개월~1년)와는 <b>시간 단위가 전혀 다릅니다</b>. 이 화면을 보고 자주 사고파는 것이 가장 큰 손실 요인입니다(매도 시 세금 0.20%).</div>'+
-      '<div class="ot">Microstructure · '+(CURTF==='1m'?'1분':'5분')+' 미시구조</div>'+
-      '<div style="font-size:12px;line-height:1.65">매수 거래량 비율 <b style="color:'+(del.buy_ratio>=50?'var(--sage,#5f7145)':'var(--ox,#96382b)')+'">'+(del.buy_ratio!=null?del.buy_ratio:'-')+'%</b> · 누적델타 '+((del.last||0).toLocaleString())+'<br>'+
-      '구조 '+(bos==='up'?'<b style="color:var(--sage,#5f7145)">▲ 상방 돌파(BOS)</b>':bos==='down'?'<b style="color:var(--ox,#96382b)">▼ 하방 이탈(BOS)</b>':'– 레인지')+' · POC '+(d.vp?fmt(d.vp.poc):'-')+' · 밸류 '+(d.vp?fmt(d.vp.val)+'~'+fmt(d.vp.vah):'-')+'</div>'+
+    const px2=bars[bars.length-1].close;
+    const zrows=ZONES.slice().sort((a,b)=>b.mid-a.mid).map(z=>{
+      const dp=(z.mid/px2-1)*100;
+      return '<span class="zrow"><i style="background:rgba('+z.col+',.45);border:1px solid rgb('+z.col+')"></i>'+
+        '<span class="zn">'+z.name+'</span><span class="zp">'+fmt(Math.round(z.mid))+'</span>'+
+        '<span class="zd" style="color:'+(dp>=0?'var(--up-c)':'var(--down-c)')+'">'+
+        (dp>=0?'+':'')+dp.toFixed(2)+'%</span></span>';}).join('');
+    ovlCons.innerHTML=
+      '<div class="warn" onclick="warnToggle(this)">'+
+        '<b style="color:var(--ox)">⚠ 참고 전용 화면</b> <span style="color:var(--ink-faint)">— 눌러서 설명</span>'+
+        '<div class="more">여기 지표들(오더블럭·FVG·볼륨프로파일)은 <b>학술적으로 검증된 적이 없고</b>, '+
+        '과거 분봉이 없어 저희가 검증할 수도 없습니다. 장기보유(수개월~1년)와는 <b>시간 단위가 전혀 다릅니다</b>. '+
+        '이 화면을 보고 자주 사고파는 것이 가장 큰 손실 요인입니다(매도 시 세금 0.20%).</div></div>'+
+      '<div class="ot">'+(CURTF==='1m'?'1분':'5분')+' 미시구조</div>'+
+      '<div style="font-size:11.5px;line-height:1.6">매수 비율 <b style="color:'+(del.buy_ratio>=50?'var(--sage,#5f7145)':'var(--ox,#96382b)')+'">'+(del.buy_ratio!=null?del.buy_ratio:'-')+'%</b>'+
+      ' · 델타 '+((del.last||0).toLocaleString())+'<br>'+
+      '구조 '+(bos==='up'?'<b style="color:var(--sage,#5f7145)">▲ 상방돌파</b>':bos==='down'?'<b style="color:var(--ox,#96382b)">▼ 하방이탈</b>':'– 레인지')+
+      ' · POC '+(d.vp?fmt(d.vp.poc):'-')+'</div>'+
       '<div style="font-size:9px;color:var(--ink-faint,#8b8474);margin-top:6px;line-height:1.4">'+(d.note||'')+'</div>';
+    // 구간 목록은 **차트 아래 범례 줄**에 가로로 — 떠 있는 패널에 넣으면 캔들을 가린다
+    const zEl=document.getElementById('zonebar');
+    if(zEl)zEl.innerHTML=zrows?'<span class="zttl">구간 · 현재가 대비</span>'+zrows:'';
     ovlTf.style.display='none';
   }
   function paint(d){
+    const zb=document.getElementById('zonebar'); if(zb)zb.innerHTML='';  // 일봉엔 인트라데이 구간 줄 없음
     sName.textContent=d.name||'—'; sCode.textContent=d.code+' · KOSPI';
     sPrice.textContent=fmt(d.price);
     const up=d.change_pct>=0; sChg.className='chg '+(up?'up':'down');

@@ -1,8 +1,9 @@
 {
- "version": "1.7.5",
+ "version": "1.7.6",
  "released": "2026-08-03",
  "notes": [
-  "장이 열리면 수급을 자동으로 기록해 둡니다 — 나중에 그날을 다시 볼 수 있습니다"
+  "5분봉에서 오른쪽 설명창이 차트를 가리지 않게 했습니다",
+  "지지·저항 같은 구간을 차트 아래에서 모두 볼 수 있습니다"
  ],
  "min_python": "3.9",
  "requires": [
@@ -13,5 +14,5 @@
   "finance-datareader",
   "pywebview"
  ],
- "sha256": "defdf4ad71a27fe53ed4b9727c09e63c857c5cc4939e00a6642577937e164b4b"
+ "sha256": "8e92d5b3a6404bdd59b4c0711eb08dfb45c6e9c2ae62417fb9708bb8bc68311f"
 }
