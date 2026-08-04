@@ -78,6 +78,15 @@
   .sp-foot{text-align:center;font-size:11.5px;color:var(--ink-faint);margin-top:26px;line-height:1.7}
   .sp-nc{background:rgba(154,123,63,.14);border:1px solid var(--ochre);border-radius:13px;
     padding:13px 16px;margin-bottom:12px;cursor:pointer}
+  /* 평단 기준 행동 분석 — 근거 논문을 항상 함께 보여준다 */
+  .ps-it{border-left:3px solid var(--rule);padding:2px 0 2px 11px;margin-top:11px}
+  .ps-it.warn{border-left-color:var(--ox)}
+  .ps-it.neutral{border-left-color:var(--ochre)}
+  .ps-h{font-size:14.5px;line-height:1.35}
+  .ps-t{font-size:13px;color:var(--ink-soft);line-height:1.65;margin-top:3px}
+  .ps-p{display:inline-block;margin-top:4px;font-size:11.5px;color:var(--ink-faint);
+    text-decoration:none;border-bottom:1px dotted var(--rule)}
+  .ps-p:hover{color:var(--ox);border-bottom-color:var(--ox)}
 
   /* ── 종목 수급 (외국인·기관·개인) ── */
   .frow{margin-top:12px}
@@ -615,6 +624,7 @@
   const WL=[["삼성전자","005930"],["SK하이닉스","000660"],["NAVER","035420"],
     ["카카오","035720"],["현대차","005380"],["에코프로비엠","247540"]];
   let CURCODE="005930", CURNAME="삼성전자", CURTF="D", DATA=null, AVG=parseFloat(avgIn.value)||0;
+  let AVGS={};                        // {종목코드: 평단} — 서버 prefs.avg_prices 에 보관
   let upC="#7a2018", downC="#3a4a63";
 
   // ── 설정 ──
@@ -968,13 +978,26 @@
     // 목표 비중에서 가장 많이 벗어난 종목부터 본다
     const pick=rows.slice().sort((a,b)=>
       Math.abs(b.amt/total-tgt)-Math.abs(a.amt/total-tgt))[0];
-    let t; try{t=await (await fetch('/api/timing/'+pick.code+'?name='+encodeURIComponent(pick.name),
-      {headers:authHeaders()})).json();}catch(e){return;}
+    const av=parseFloat(AVGS[pick.code])||0;            // 그 종목 평단(있으면 행동 분석까지)
+    let t; try{t=await (await fetch('/api/timing/'+pick.code+'?name='+encodeURIComponent(pick.name)
+      +(av>0?'&avg='+av:''), {headers:authHeaders()})).json();}catch(e){return;}
+    const ps=t.psych||{};
+    const psHtml=ps.ok
+      ? `<div class="sp-lab" style="margin-top:16px;padding-top:12px;border-top:1px solid var(--rule-soft)">
+           내 평단에서 흔히 생기는 함정</div>`+
+        (ps.items||[]).map(it=>`<div class="ps-it ${it.tone}">
+           <div class="ps-h">${esc(it.head)}</div>
+           <div class="ps-t">${esc(it.text)}</div>
+           <a class="ps-p" href="${it.paper.url}" target="_blank">${esc(it.paper.who)} ↗</a>
+         </div>`).join('')+
+        `<div class="sp-note">${esc(ps.note||'')}</div>`
+      : `<div class="sp-note" style="margin-top:14px">${esc(ps.msg||'')}</div>`;
     box.innerHTML=
       `<div class="sp-lab">지금 뭘 하면 좋을까요?</div>
        <div class="sp-big" style="font-size:22px;margin-top:4px">${TM_ICON[t.verdict]||'🟡'} ${esc(pick.name)} — ${esc(t.title)}</div>
        <div class="sp-sub" style="margin-top:6px">${esc(t.lead)}</div>
        ${(t.reasons||[]).map(r=>`<div class="sp-note" style="margin-top:8px">${r.icon} ${esc(r.text)}</div>`).join('')}
+       ${psHtml}
        <div class="sp-note" style="margin-top:10px;padding-top:8px;border-top:1px solid var(--rule-soft)">${esc(t.basis||'')}</div>
        <button class="sp-btn ghost" onclick="simpleClose();loadStock('${pick.code}','${esc(pick.name)}')">이 종목 자세히 보기</button>`;
   }
@@ -1245,10 +1268,20 @@
     positionZones();
     if(AVG&&AVG>0&&DATA){const p=(DATA.price-AVG)/AVG*100;avgPL.textContent=(p>=0?'＋':'')+p.toFixed(1)+'%';avgPL.className='avgpl '+(p>=0?'up':'down');}else avgPL.textContent='';
   }
-  avgIn.addEventListener('input',()=>{AVG=parseFloat(avgIn.value)||0;if(DATA)renderChart(DATA);});
+  // 평단은 **종목마다 다르다**. 예전엔 입력칸 하나에 기본값이 박혀 있어 어디에도 남지 않았다.
+  avgIn.addEventListener('input',()=>{
+    AVG=parseFloat(avgIn.value)||0;
+    if(CURCODE){ if(AVG>0)AVGS[CURCODE]=AVG; else delete AVGS[CURCODE];
+      if(typeof prefsSave==='function')prefsSave({avg_prices:AVGS}); }
+    if(DATA)renderChart(DATA);});
+  function avgApply(code){                       // 종목을 바꾸면 그 종목 평단을 꺼내 온다
+    AVG=parseFloat(AVGS[code])||0;
+    if(avgIn)avgIn.value=AVG>0?AVG:'';
+  }
 
   async function loadStock(code,name,tf){
     CURCODE=code; if(name)CURNAME=name; if(tf)CURTF=tf; drawWL();
+    if(typeof avgApply==='function')avgApply(code);      // 종목별 평단 반영
     if(CURTF==='5m'||CURTF==='1m'){return loadIntraday(code);}
     sLive.textContent="불러오는 중…";
     try{const r=await fetch('/api/stock/'+code+'?tf='+CURTF+'&mc_paths='+SET.mcPaths+'&mc_steps='+SET.mcSteps);DATA=await r.json();}
@@ -2053,6 +2086,7 @@
         if(p.settings)Object.assign(SET,p.settings);
         if(p.portfolio)localStorage.setItem('nao_pf',JSON.stringify(p.portfolio));
         if(p.budget!=null)localStorage.setItem('nao_budget',String(p.budget));
+        if(p.avg_prices)AVGS=p.avg_prices;              // 종목별 평단 — 행동 분석의 전제
       }else{                                           // 최초 1회: 기존 브라우저 값 서버로 이전
         const mig={settings:SET};
         try{const pf=JSON.parse(localStorage.getItem('nao_pf')||'null'); if(pf)mig.portfolio=pf;}catch(e){}

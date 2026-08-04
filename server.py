@@ -383,11 +383,43 @@ def api_timing(code):
         if not price:
             from kis_kr import KISKorea
             price = float(KISKorea().quote(code).get("price") or 0)
-        return jsonify(timing.judge(
+        out = timing.judge(
             code=code, name=request.args.get("name", ""), price=price, avg=avg,
             my_amount=mine, total_amount=total, n_holdings=len(pf),
             band=request.args.get("band", ""),
-            market=request.args.get("market", "KOSPI")))
+            market=request.args.get("market", "KOSPI"))
+
+        # 평단가 기준 행동 분석 — **실제 KIS 일봉**에서 52주·60일 값을 뽑아 쓴다
+        try:
+            import psych
+            from kis_kr import KISKorea
+            h52 = l52 = h60 = 0.0
+            df = KISKorea().daily_ohlcv_long(code, days=260)
+            hs = ([float(x) for x in df["high"].tolist()] if not isinstance(df, list)
+                  else [float(r["high"]) for r in df])
+            ls = ([float(x) for x in df["low"].tolist()] if not isinstance(df, list)
+                  else [float(r["low"]) for r in df])
+            if hs:
+                h52, h60 = max(hs[-250:]), max(hs[-60:])
+            if ls:
+                l52 = min(ls[-250:])
+            held = trades = None
+            try:
+                from journal import context_for, entries
+                ctx = context_for(code) or {}
+                held = ctx.get("held_days")
+                trades = len([e for e in (entries(code) or [])][:50]) or None
+            except Exception:
+                pass
+            out["psych"] = psych.analyze(
+                price=price, avg=avg, high52=h52, low52=l52, high60=h60,
+                weight=(mine / total) if total else 0.0,
+                held_days=held, trades_90d=trades)
+            out["levels"] = {"high52": round(h52), "low52": round(l52), "high60": round(h60)}
+        except Exception as e:
+            out["psych"] = {"ok": False, "items": [],
+                            "msg": f"행동 분석을 계산하지 못했습니다({type(e).__name__})."}
+        return jsonify(out)
     except Exception as e:
         return jsonify({"verdict": "watch", "title": "판단 보류",
                         "lead": "지금은 계산에 필요한 값을 불러오지 못했습니다.",
