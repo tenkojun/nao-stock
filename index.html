@@ -95,6 +95,11 @@
   .sp-foot{text-align:center;font-size:11.5px;color:var(--ink-faint);margin-top:26px;line-height:1.7}
   .sp-nc{background:rgba(154,123,63,.14);border:1px solid var(--ochre);border-radius:13px;
     padding:13px 16px;margin-bottom:12px;cursor:pointer}
+  /* 문장 조언 — 사실은 담백하게, 결론은 눈에 띄게 */
+  .ad-facts{margin-top:8px;font-size:13.5px;color:var(--ink-soft);line-height:1.85}
+  .ad-line{font-size:14.5px;line-height:1.7;margin-top:7px}
+  .ad-verd{margin-top:12px;padding:11px 13px;border-radius:11px;background:var(--paper-lo);
+    font-size:16px;font-weight:700}
   /* 평단 기준 행동 분석 — 근거 논문을 항상 함께 보여준다 */
   .ps-it{border-left:3px solid var(--rule);padding:2px 0 2px 11px;margin-top:11px}
   .ps-it.warn{border-left-color:var(--ox)}
@@ -826,6 +831,8 @@
   // 진짜 실시간(푸시)이 아니라 폴링 — 앱을 켤 때 + 3분 간격.
   let NC={admin:false,unread:0,notices:[]}, ncTimer=null;
   const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const bold=s=>String(s||'').replace(/\*\*(.+?)\*\*/g,'<b>$1</b>');   // **강조** → <b>
+
   ncmask.addEventListener('click',e=>{if(e.target===ncmask)closeNotice();});
   function closeNotice(){ncmask.classList.remove('on');}
 
@@ -1063,6 +1070,15 @@
     const av=parseFloat(AVGS[pick.code])||0;            // 그 종목 평단(있으면 행동 분석까지)
     let t; try{t=await (await fetch('/api/timing/'+pick.code+'?name='+encodeURIComponent(pick.name)
       +(av>0?'&avg='+av:''), {headers:authHeaders()})).json();}catch(e){return;}
+    // 문장 조언 — 사실·계산·분포·행동으로만 구성(패턴 예측 없음)
+    let ad=null;
+    try{
+      const s=await (await fetch('/api/stock/'+pick.code+'?tf=D')).json();
+      ad=await (await fetch('/api/advice/'+pick.code,{method:'POST',
+        headers:Object.assign({'Content-Type':'application/json'},authHeaders()),
+        body:JSON.stringify({name:pick.name,price:s.price,levels:s.levels,mc:s.mc,
+          ohlc:s.ohlc,high60:(t.levels||{}).high60,high52:(t.levels||{}).high52})})).json();
+    }catch(e){}
     const ps=t.psych||{};
     const psHtml=ps.ok
       ? `<div class="sp-lab" style="margin-top:16px;padding-top:12px;border-top:1px solid var(--rule-soft)">
@@ -1074,12 +1090,19 @@
          </div>`).join('')+
         `<div class="sp-note">${esc(ps.note||'')}</div>`
       : `<div class="sp-note" style="margin-top:14px">${esc(ps.msg||'')}</div>`;
+    const adHtml=(ad&&ad.ok)?
+      `<div class="ad-facts">${(ad.facts||[]).map(f=>`<div>• ${esc(f)}</div>`).join('')}</div>
+       ${(ad.lines||[]).map(l=>`<div class="ad-line">${bold(esc(l))}</div>`).join('')}
+       <div class="ad-verd">▶ ${esc(ad.verdict)}</div>
+       ${(ad.why||[]).map(x=>`<div class="sp-note" style="margin-top:4px">– ${esc(x)}</div>`).join('')}`
+      :`<div class="sp-sub" style="margin-top:6px">${esc(t.lead)}</div>
+        ${(t.reasons||[]).map(r=>`<div class="sp-note" style="margin-top:8px">${r.icon} ${esc(r.text)}</div>`).join('')}`;
     box.innerHTML=
-      `<div class="sp-lab">지금 뭘 하면 좋을까요?</div>
+      `<div class="sp-lab">지금 어떻게 할까요?</div>
        <div class="sp-big" style="font-size:22px;margin-top:4px">${TM_ICON[t.verdict]||'🟡'} ${esc(pick.name)} — ${esc(t.title)}</div>
-       <div class="sp-sub" style="margin-top:6px">${esc(t.lead)}</div>
-       ${(t.reasons||[]).map(r=>`<div class="sp-note" style="margin-top:8px">${r.icon} ${esc(r.text)}</div>`).join('')}
+       ${adHtml}
        ${psHtml}
+       ${(ad&&ad.ok)?`<div class="sp-note" style="margin-top:10px">${esc(ad.limits)}</div>`:''}
        <div class="sp-note" style="margin-top:10px;padding-top:8px;border-top:1px solid var(--rule-soft)">${esc(t.basis||'')}</div>
        <button class="sp-btn ghost" onclick="simpleClose();loadStock('${pick.code}','${esc(pick.name)}')">이 종목 자세히 보기</button>`;
   }

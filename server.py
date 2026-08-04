@@ -366,6 +366,43 @@ def api_auth_logout():
     return jsonify(logout(request.headers.get("X-Auth-Token", "")))
 
 
+@app.route("/api/advice/<code>", methods=["POST"])
+def api_advice(code):
+    """지금 어떻게 할까요 — 문장 조언. 사실·계산·분포·행동만으로 만든다(패턴 예측 없음)."""
+    import advice
+    from auth import whoami
+    from prefs import load as pload
+    j = request.get_json(silent=True) or {}
+    u = whoami(request.headers.get("X-Auth-Token", ""))
+    p = pload((u or {}).get("id", "father")) or {}
+    pf = p.get("portfolio") or {}
+    total = sum(float(v or 0) for v in pf.values()) * 10_000
+    mine = float(pf.get(code, 0) or 0) * 10_000
+    avg = float((p.get("avg_prices") or {}).get(code) or j.get("avg") or 0)
+    lv = j.get("levels") or {}
+    try:
+        ps = []
+        try:
+            import psych
+            r = psych.analyze(price=float(j.get("price") or 0), avg=avg,
+                              high52=float(j.get("high52") or 0),
+                              high60=float(j.get("high60") or 0),
+                              weight=(mine / total) if total else 0.0)
+            ps = r.get("items") or []
+        except Exception:
+            pass
+        return jsonify(advice.build(
+            name=j.get("name", ""), price=float(j.get("price") or 0), avg=avg,
+            my_amount=mine, total_amount=total,
+            high60=float(j.get("high60") or 0), high52=float(j.get("high52") or 0),
+            poc=lv.get("poc"), res=lv.get("res"), sup=lv.get("sup"),
+            mc=j.get("mc"), psych_items=ps, market=j.get("market", "KOSPI"),
+            closes=(j.get("ohlc") or {}).get("close"),
+            volumes=(j.get("ohlc") or {}).get("volume")))
+    except Exception as e:
+        return jsonify({"ok": False, "msg": f"조언을 만들지 못했습니다({type(e).__name__})."})
+
+
 @app.route("/api/timing/<code>")
 def api_timing(code):
     """살 때 / 지켜볼 때 / 덜어낼 때 — **가격 예측이 아니라** 계좌 비중과 비용으로 판정."""
