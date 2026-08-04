@@ -922,6 +922,8 @@
           '<div class="sp-sub">아직 등록한 종목이 없습니다</div>'}
         <div class="sp-note">넣은 금액과 오늘 등락으로 계산한 값입니다. 증권사 잔고와 다를 수 있습니다.</div>
       </div>`+
+      `<div class="sp-card" id="spTiming"><div class="sp-lab">지금 뭘 하면 좋을까요?</div>
+        <div class="sp-note" style="margin-top:2px">계산 중…</div></div>`+
       (codes.length?`<div class="sp-card">
         <div class="sp-lab" style="margin-bottom:2px">내 종목</div>
         ${rows.sort((a,b)=>b.amt-a.amt).map(r=>`
@@ -950,6 +952,31 @@
       im.onerror=()=>{const s=document.createElement('span');
         s.className='sp-lgf';s.textContent=im.dataset.ch;im.replaceWith(s);};
       im.src=im.dataset.src;});
+    spTimingRender(rows);
+  }
+
+  // 살 때 / 지켜볼 때 / 덜어낼 때 — 비중이 가장 치우친 종목 하나를 짚어 준다
+  const TM_ICON={buy:'🟢',watch:'🟡',trim:'🟠'};
+  async function spTimingRender(rows){
+    const box=document.getElementById('spTiming'); if(!box)return;
+    if(!rows||!rows.length){
+      box.innerHTML='<div class="sp-lab">지금 뭘 하면 좋을까요?</div>'+
+        '<div class="sp-note" style="margin-top:2px">종목을 등록하면 계좌 상태를 보고 알려드립니다.</div>';
+      return;}
+    const total=rows.reduce((a,r)=>a+r.amt,0)||1;
+    const tgt=Math.min(1/rows.length,0.25);
+    // 목표 비중에서 가장 많이 벗어난 종목부터 본다
+    const pick=rows.slice().sort((a,b)=>
+      Math.abs(b.amt/total-tgt)-Math.abs(a.amt/total-tgt))[0];
+    let t; try{t=await (await fetch('/api/timing/'+pick.code+'?name='+encodeURIComponent(pick.name),
+      {headers:authHeaders()})).json();}catch(e){return;}
+    box.innerHTML=
+      `<div class="sp-lab">지금 뭘 하면 좋을까요?</div>
+       <div class="sp-big" style="font-size:22px;margin-top:4px">${TM_ICON[t.verdict]||'🟡'} ${esc(pick.name)} — ${esc(t.title)}</div>
+       <div class="sp-sub" style="margin-top:6px">${esc(t.lead)}</div>
+       ${(t.reasons||[]).map(r=>`<div class="sp-note" style="margin-top:8px">${r.icon} ${esc(r.text)}</div>`).join('')}
+       <div class="sp-note" style="margin-top:10px;padding-top:8px;border-top:1px solid var(--rule-soft)">${esc(t.basis||'')}</div>
+       <button class="sp-btn ghost" onclick="simpleClose();loadStock('${pick.code}','${esc(pick.name)}')">이 종목 자세히 보기</button>`;
   }
 
   // ── 종목 수급 (외국인·기관·개인) ────────────────────────────────

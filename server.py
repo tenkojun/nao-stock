@@ -366,6 +366,34 @@ def api_auth_logout():
     return jsonify(logout(request.headers.get("X-Auth-Token", "")))
 
 
+@app.route("/api/timing/<code>")
+def api_timing(code):
+    """살 때 / 지켜볼 때 / 덜어낼 때 — **가격 예측이 아니라** 계좌 비중과 비용으로 판정."""
+    import timing
+    from auth import whoami
+    from prefs import load as pload
+    u = whoami(request.headers.get("X-Auth-Token", ""))
+    p = pload((u or {}).get("id", "father")) or {}
+    pf = p.get("portfolio") or {}                     # {code: 만원}
+    total = sum(float(v or 0) for v in pf.values()) * 10_000
+    mine = float(pf.get(code, 0) or 0) * 10_000
+    try:
+        price = float(request.args.get("price") or 0)
+        avg = float(request.args.get("avg") or 0)
+        if not price:
+            from kis_kr import KISKorea
+            price = float(KISKorea().quote(code).get("price") or 0)
+        return jsonify(timing.judge(
+            code=code, name=request.args.get("name", ""), price=price, avg=avg,
+            my_amount=mine, total_amount=total, n_holdings=len(pf),
+            band=request.args.get("band", ""),
+            market=request.args.get("market", "KOSPI")))
+    except Exception as e:
+        return jsonify({"verdict": "watch", "title": "판단 보류",
+                        "lead": "지금은 계산에 필요한 값을 불러오지 못했습니다.",
+                        "reasons": [], "numbers": {}, "error": f"{type(e).__name__}"})
+
+
 @app.route("/api/flow/<code>")
 def api_flow(code):
     """종목 수급 — 외국인·기관·개인을 같은 단위로. 일별 + 오늘 시간대별."""
