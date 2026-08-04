@@ -39,6 +39,46 @@
     margin-bottom:6px;font-size:10.5px;line-height:1.45;color:var(--ink);cursor:pointer}
   .ovl .warn .more{display:none;margin-top:4px}
   .ovl .warn.open .more{display:block}
+  /* ── 간단 홈 (계정 모드) — 큰 숫자·넓은 여백·쉬운 말 ── */
+  #simple{position:fixed;inset:0;z-index:700;background:var(--paper);overflow-y:auto;display:none}
+  #simple.on{display:block}
+  .sp-wrap{max-width:560px;margin:0 auto;padding:20px 18px 40px}
+  .sp-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px}
+  .sp-hi{font-size:15px;color:var(--ink-soft)}
+  .sp-sw{font-size:12.5px;background:transparent;border:1px solid var(--rule);
+    color:var(--ink-soft);padding:6px 12px;border-radius:999px;cursor:pointer;font-family:inherit}
+  .sp-sw:hover{border-color:var(--ink);color:var(--ink)}
+  .sp-card{background:var(--card);border:1px solid var(--rule-soft);border-radius:16px;
+    padding:20px 20px;margin-bottom:12px}
+  .sp-lab{font-size:13.5px;color:var(--ink-soft);margin-bottom:6px}
+  .sp-big{font-size:34px;font-weight:700;letter-spacing:-.02em;line-height:1.15}
+  .sp-sub{font-size:14px;margin-top:6px;color:var(--ink-soft)}
+  .sp-row{display:flex;align-items:center;gap:12px;padding:13px 0;
+    border-top:1px solid var(--rule-soft);cursor:pointer}
+  .sp-row:first-of-type{border-top:none}
+  .sp-lg{width:34px;height:34px;flex:none;border-radius:9px;border:1px solid var(--rule-soft);
+    background:#fff;object-fit:contain}
+  .sp-lgf{width:34px;height:34px;flex:none;border-radius:9px;background:var(--ink);
+    color:var(--paper-hi);display:flex;align-items:center;justify-content:center;
+    font-size:15px;font-weight:700}
+  .sp-nm{font-size:15.5px;line-height:1.25}
+  .sp-cd{font-size:12px;color:var(--ink-faint)}
+  .sp-amt{margin-left:auto;text-align:right}
+  .sp-amt b{font-size:15.5px;display:block}
+  .sp-amt s{font-size:12.5px;text-decoration:none}
+  .sp-btn{display:block;width:100%;box-sizing:border-box;margin-top:12px;padding:15px;
+    background:var(--ink);color:var(--paper-hi);border:none;border-radius:13px;
+    font-size:15.5px;font-family:inherit;cursor:pointer}
+  .sp-btn:hover{opacity:.9}
+  .sp-btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--rule)}
+  .sp-idx{display:flex;gap:10px}
+  .sp-idx>div{flex:1}
+  .sp-idx .v{font-size:19px;font-weight:700}
+  .sp-note{font-size:12.5px;color:var(--ink-faint);line-height:1.6;margin-top:8px}
+  .sp-foot{text-align:center;font-size:11.5px;color:var(--ink-faint);margin-top:26px;line-height:1.7}
+  .sp-nc{background:rgba(154,123,63,.14);border:1px solid var(--ochre);border-radius:13px;
+    padding:13px 16px;margin-bottom:12px;cursor:pointer}
+
   /* ── 종목 수급 (외국인·기관·개인) ── */
   .frow{margin-top:12px}
   .frow .fh{display:flex;align-items:center;gap:7px;font-size:13px;margin-bottom:4px;flex-wrap:wrap}
@@ -227,6 +267,7 @@
       <button class="btn" onclick="openStudy()">📖 공부</button>
       <span id="whoami" style="font-size:11px;color:var(--ink-faint);margin-left:6px" title="로그아웃하려면 누르세요" onclick="if(confirm('로그아웃 하시겠습니까?'))logout()"></span>
       <button class="btn ai" onclick="openAI()">✦ AI 전망</button>
+      <span style="cursor:pointer" onclick="simpleShow()" title="간단 화면으로">🏠</span>
       <span style="position:relative;cursor:pointer" onclick="openNotice()" title="공지">🔔<span id="ncBadge"></span></span>
       <span><b id="clk">14:32:08</b></span><span style="cursor:pointer" onclick="openSet()" title="설정">⚙</span>
     </div>
@@ -312,6 +353,18 @@
   <div class="modal" style="width:min(720px,95vw);height:min(820px,90vh)">
     <div class="mh"><span class="t">🌐 Market Context · 시장 컨텍스트</span><span class="x" onclick="closeMarket()">✕</span></div>
     <div style="padding:14px 18px;overflow:auto" id="mktbody"></div>
+  </div>
+</div>
+
+<!-- 간단 홈 — 큰 숫자·쉬운 말. 아버지 계정 기본 화면 -->
+<div id="simple">
+  <div class="sp-wrap">
+    <div class="sp-top">
+      <span class="sp-hi" id="spHi">안녕하세요</span>
+      <button class="sp-sw" onclick="simpleClose()">자세히 보기 →</button>
+    </div>
+    <div id="spBody"></div>
+    <div class="sp-foot">나오 주식 · 예측이 아니라 계산과 기록을 도와드립니다</div>
   </div>
 </div>
 
@@ -565,7 +618,7 @@
   let upC="#7a2018", downC="#3a4a63";
 
   // ── 설정 ──
-  const SET=Object.assign({theme:"paper",size:"1",color:"kr",grid:"on",view:"detail",
+  const SET=Object.assign({mode:"",theme:"paper",size:"1",color:"kr",grid:"on",view:"detail",
     markers:"on",mccone:"on",levels:"on",mcPaths:"400",mcSteps:"20",
     basis:"close",refresh:"off"},
     JSON.parse(localStorage.getItem("nao_set")||"{}"));
@@ -818,6 +871,86 @@
       headers:Object.assign({'Content-Type':'application/json'},authHeaders()),
       body:JSON.stringify({action:'delete',id})});
       NC=await r.json(); ncRender();}catch(e){}}
+
+  // ── 간단 홈 (계정 모드) ─────────────────────────────────────────
+  // 기존 '간단히 보기'는 차트 오버레이 2개를 숨기는 게 전부였다.
+  // 여기서는 **화면 자체를 바꾼다** — 큰 숫자, 쉬운 말, 전문 용어 없음.
+  function simpleOpen(){document.getElementById('simple').classList.add('on');simpleRender();}
+  function simpleClose(){document.getElementById('simple').classList.remove('on');
+    try{localStorage.setItem('nao_mode','pro');}catch(e){}
+    SET.mode='pro'; saveSettings();}
+  function simpleShow(){SET.mode='simple';saveSettings();simpleOpen();}
+
+  const won=v=>{const a=Math.abs(v);
+    if(a>=10000)return (v/10000).toFixed(a>=100000?0:1)+'억원';
+    return Math.round(v).toLocaleString()+'만원';};
+
+  async function simpleRender(){
+    const el=document.getElementById('spBody');
+    const hi=document.getElementById('spHi');
+    if(hi)hi.textContent=(AUTH.user?AUTH.user.name:'')+'님, 안녕하세요';
+    el.innerHTML='<div class="sp-card"><div class="sp-lab">불러오는 중…</div></div>';
+
+    const pf=pfLoad(), codes=Object.keys(pf);
+    let notice=null, mkt=null;
+    try{const n=await (await fetch('/api/notice',{headers:authHeaders()})).json();
+      if(n.unread>0)notice=n.notices.find(x=>x.unread);}catch(e){}
+    try{mkt=await (await fetch('/api/market')).json();}catch(e){}
+
+    // 보유 종목 시세 — 한 번에
+    const rows=[];
+    for(const c of codes){
+      let q=null; try{q=await (await fetch('/api/stock/'+c+'?tf=D')).json();}catch(e){}
+      rows.push({code:c, amt:pf[c], name:(q&&q.name)||c, chg:(q&&q.change_pct)||0});
+    }
+    const total=rows.reduce((a,r)=>a+r.amt,0);
+    const todayΔ=rows.reduce((a,r)=>a+r.amt*(r.chg/100),0);
+
+    const idx=(mkt&&mkt.indices||[]).slice(0,2).map(i=>
+      `<div><div class="sp-lab">${i.name}</div>
+        <div class="v ${i.chg>=0?'up':'down'}">${Math.round(i.value).toLocaleString()}</div>
+        <div class="sp-lab ${i.chg>=0?'up':'down'}">${i.chg>=0?'▴':'▾'} ${Math.abs(i.chg)}%</div></div>`).join('');
+
+    el.innerHTML=
+      (notice?`<div class="sp-nc" onclick="simpleClose();openNotice()">
+        <b>📢 ${esc(notice.title)}</b><div class="sp-note" style="margin-top:3px">눌러서 보기</div></div>`:'')+
+      `<div class="sp-card">
+        <div class="sp-lab">내가 넣은 돈</div>
+        <div class="sp-big">${codes.length?won(total):'0원'}</div>
+        ${codes.length?`<div class="sp-sub ${todayΔ>=0?'up':'down'}">오늘 ${todayΔ>=0?'＋':'－'}${won(Math.abs(todayΔ))}
+          <span style="color:var(--ink-faint)">(${(todayΔ/total*100).toFixed(1)}%)</span></div>`:
+          '<div class="sp-sub">아직 등록한 종목이 없습니다</div>'}
+        <div class="sp-note">넣은 금액과 오늘 등락으로 계산한 값입니다. 증권사 잔고와 다를 수 있습니다.</div>
+      </div>`+
+      (codes.length?`<div class="sp-card">
+        <div class="sp-lab" style="margin-bottom:2px">내 종목</div>
+        ${rows.sort((a,b)=>b.amt-a.amt).map(r=>`
+          <div class="sp-row" onclick="simpleClose();loadStock('${r.code}','${esc(r.name)}')">
+            <img class="sp-lg" data-src="https://ssl.pstatic.net/imgstock/fn/real/logo/stock/Stock${r.code}.svg" data-ch="${esc(r.name[0])}" alt="">
+            <span><div class="sp-nm">${esc(r.name)}</div><div class="sp-cd">${r.code}</div></span>
+            <span class="sp-amt"><b>${won(r.amt)}</b>
+              <s class="${r.chg>=0?'up':'down'}">${r.chg>=0?'＋':'－'}${Math.abs(r.chg).toFixed(1)}%</s></span>
+          </div>`).join('')}
+      </div>`:'')+
+      `<div class="sp-card">
+        <div class="sp-lab">이번 달 여윳돈, 어디에 넣을까요?</div>
+        <div class="sp-note" style="margin-top:2px">쏠린 쪽을 피해 모자란 쪽부터 채우는 계산입니다. 팔지 않으니 세금이 없습니다.</div>
+        <button class="sp-btn" onclick="simpleClose();openAlloc()">계산해 보기</button>
+        <button class="sp-btn ghost" onclick="simpleClose();openPortfolio()">내 종목 고치기</button>
+      </div>`+
+      (idx?`<div class="sp-card"><div class="sp-lab" style="margin-bottom:8px">오늘 시장</div>
+        <div class="sp-idx">${idx}</div></div>`:'')+
+      `<div class="sp-card">
+        <div class="sp-lab">기록해 두기</div>
+        <div class="sp-note" style="margin-top:2px">왜 샀는지 적어두면, 팔지 말지 고민될 때 그때 생각을 다시 볼 수 있습니다.</div>
+        <button class="sp-btn ghost" onclick="simpleClose();openJournal()">기록장 열기</button>
+      </div>`;
+
+    el.querySelectorAll('img.sp-lg').forEach(im=>{      // 로고 없으면 첫 글자
+      im.onerror=()=>{const s=document.createElement('span');
+        s.className='sp-lgf';s.textContent=im.dataset.ch;im.replaceWith(s);};
+      im.src=im.dataset.src;});
+  }
 
   // ── 종목 수급 (외국인·기관·개인) ────────────────────────────────
   // 예전엔 오른쪽 패널에 '외국인(5일)·기관(5일)' 두 줄뿐이고 개인은 아예 없었다.
@@ -1998,6 +2131,9 @@
     ncStartPolling();                        // 공지 확인 — 시작 시 1회 + 3분 간격
     loadStock('005930','삼성전자','D');
     setTimeout(bootDone,1400);
+    // 계정별 기본 화면 — 관리자는 전문, 그 외는 간단. 한 번 바꾸면 그 선택을 기억한다.
+    if(!SET.mode)SET.mode=(AUTH.user&&AUTH.user.role==='admin')?'pro':'simple';
+    if(SET.mode==='simple')setTimeout(simpleOpen,1500);
   }
   function bootStart(){
     bootProgress('준비하는 중입니다…');
