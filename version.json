@@ -1,8 +1,8 @@
 {
- "version": "1.7.7",
- "released": "2026-08-03",
+ "version": "1.7.8",
+ "released": "2026-08-04",
  "notes": [
-  "수급 화면을 새로 만들었습니다 — 외국인·기관·개인이 각각 얼마나 사고팔았는지 한눈에"
+  "수급 화면에서 지난 날짜를 골라 그날 흐름을 볼 수 있습니다"
  ],
  "min_python": "3.9",
  "requires": [
@@ -13,5 +13,5 @@
   "finance-datareader",
   "pywebview"
  ],
- "sha256": "99a3a5b06aa4baeaec334c3369ea4b040757e7a0734262d2ce72eb603e5626ab"
+ "sha256": "fb8549a66a2d58905b435fd37dd6abfc6da18a0f7b41e386e3f8dee138069250"
 }

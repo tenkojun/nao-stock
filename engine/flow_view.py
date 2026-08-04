@@ -51,8 +51,34 @@ def _sum(rows, n, key):
     return sum(r[key] for r in rows[-n:]) if rows else 0
 
 
-def build(code, days=20):
-    """화면이 바로 쓸 수 있는 형태로."""
+def _intraday_of(code, date):
+    """그날 기록에서 이 종목의 시간대별 수급을 꺼낸다.
+    스냅샷은 누적값이므로 **구간 증분**까지 계산해 준다."""
+    try:
+        import session_rec as S
+    except Exception:
+        return None, None, None
+    day = S.load(date)
+    if not day:
+        return None, None, None
+    hour = None
+    for s in reversed(day.get("snaps") or []):        # 값이 있던 마지막 스냅샷
+        h = ((s.get("stocks") or {}).get(code) or {}).get("hour")
+        if h:
+            hour = h
+            break
+    if not hour:
+        return None, None, day.get("updated")
+    hour = sorted(hour, key=lambda x: str(x.get("gb")))
+    step, pf, po = [], 0, 0
+    for h in hour:
+        step.append({"gb": h["gb"], "frgn": h["frgn"] - pf, "orgn": h["orgn"] - po})
+        pf, po = h["frgn"], h["orgn"]
+    return hour, step, day.get("updated")
+
+
+def build(code, days=20, date=None):
+    """화면이 바로 쓸 수 있는 형태로. date 를 주면 **그날** 시간대별을 보여준다."""
     kis_rows, raw = _from_kis(code)
     merged = _from_csv(code)
     merged.update(kis_rows)                       # 최신값 우선
@@ -64,26 +90,17 @@ def build(code, days=20):
                     "d1": _sum(rows, 1, key), "d5": _sum(rows, 5, key),
                     "d20": _sum(rows, 20, key)}
 
-    # 오늘 시간대별(장중 기록기가 남긴 것) — 누적값이므로 구간 증분도 함께 준다
+    # 시간대별 — 장중 기록기가 남긴 것. 날짜를 고르면 그날 것(캘린더).
     try:
         import session_rec as S
-        day = S.load(S.today())
-        snaps = (day or {}).get("snaps") or []
-        hour = None
-        for s in reversed(snaps):                 # 마지막으로 값이 있던 스냅샷
-            h = ((s.get("stocks") or {}).get(code) or {}).get("hour")
-            if h:
-                hour = h
-                break
+        out["session_dates"] = S.dates()[:40]     # 기록이 있는 날 = 캘린더에 켜지는 날
+        sel = date or S.today()
+        out["session_date"] = sel
+        hour, step, at = _intraday_of(code, sel)
         if hour:
-            hour = sorted(hour, key=lambda x: str(x.get("gb")))
-            step, pf, po = [], 0, 0
-            for h in hour:
-                step.append({"gb": h["gb"], "frgn": h["frgn"] - pf, "orgn": h["orgn"] - po})
-                pf, po = h["frgn"], h["orgn"]
             out["intraday"] = hour
             out["intraday_step"] = step
-            out["intraday_at"] = (day or {}).get("updated")
+            out["intraday_at"] = at
     except Exception:
         pass
 

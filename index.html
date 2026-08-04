@@ -54,6 +54,14 @@
     height:100%;min-width:3px}
   .fbar i,.fbar b{display:block;width:100%;max-width:11px}
   .fbar i{align-self:flex-end;margin-top:auto}
+  /* 기록이 있는 날만 켜지는 캘린더 */
+  .fcal{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px}
+  .fday{font-family:ui-monospace,monospace;font-size:11.5px;padding:4px 9px;cursor:pointer;
+    border:1px solid var(--rule);background:var(--card);color:var(--ink-soft)}
+  .fday s{text-decoration:none;color:var(--ink-faint);font-size:10px;margin-left:2px}
+  .fday:hover{border-color:var(--ink);color:var(--ink)}
+  .fday.on{background:var(--ink);color:var(--paper-hi);border-color:var(--ink)}
+  .fday.on s{color:var(--paper-lo)}
   .ihead,.irow{display:flex;align-items:flex-end;gap:4px;margin-top:3px}
   .ihead{font-family:var(--eng);font-size:9px;letter-spacing:.1em;color:var(--ink-faint)}
   .ihead span,.irow .ibar{flex:1;text-align:center}
@@ -839,23 +847,43 @@
         <span class="fnum ${s.d20>=0?'up':'down'}">20일 ${s.d20>=0?'＋':'－'}${man(Math.abs(s.d20))}</span></div>
       <div class="fbars" style="height:${H}px">${flwBars(d.days,key,H)}<u></u></div></div>`;
   }
+  // 기록이 있는 날만 켜지는 캘린더. KIS 는 지난 날 시간대별을 안 주므로
+  // **우리가 장중에 쌓은 날**만 볼 수 있다 — 없는 날은 아예 안 보여준다.
+  function flwCal(d){
+    const ds=d.session_dates||[];
+    if(!ds.length)return '';
+    const sel=d.session_date;
+    const lab=x=>{const m=+x.slice(4,6),dd=+x.slice(6,8);
+      const t=new Date(+x.slice(0,4),m-1,dd), w='일월화수목금토'[t.getDay()];
+      return m+'/'+dd+' <s>'+w+'</s>';};
+    return '<div class="mlabel" style="margin-top:14px">날짜 · 기록이 있는 날만</div>'+
+      '<div class="fcal">'+ds.map(x=>
+        `<button class="fday${x===sel?' on':''}" onclick="openFlow('${x}')">${lab(x)}</button>`).join('')+
+      '</div>';
+  }
   function flwIntraday(d){
     const st=d.intraday_step||[];
-    if(!st.length)return '<div class="mnote">오늘 시간대별 기록이 아직 없습니다. 장이 열려 있는 동안 앱을 켜 두면 5분마다 쌓입니다.</div>';
+    const cal=flwCal(d);
+    const when=d.session_date&&d.session_date!==TODAY8()?d.session_date.slice(4,6)+'/'+d.session_date.slice(6,8):'오늘';
+    if(!st.length)return cal+'<div class="mnote">'+
+      (d.session_dates&&d.session_dates.length?when+' 시간대별 기록이 없습니다(그날 앱을 켜두지 않았거나 휴장).':
+       '시간대별 기록이 아직 없습니다. 장이 열려 있는 동안 앱을 켜 두면 5분마다 쌓입니다.')+'</div>';
     const mx=Math.max(1,...st.map(s=>Math.max(Math.abs(s.frgn),Math.abs(s.orgn))));
     const col=(v,c)=>{const h=Math.round(Math.abs(v)/mx*44);
       return `<span class="ibar" title="${man(v)}"><i style="height:${v>=0?h:0}px;background:var(--up-c)"></i>`+
         `<b style="height:${v<0?h:0}px;background:var(--down-c)"></b></span>`;};
-    return `<div class="mlabel" style="margin-top:14px">오늘 시간대별 · 구간마다 얼마나 사고팔았나</div>
+    return cal+`<div class="mlabel" style="margin-top:12px">${when} 시간대별 · 구간마다 얼마나 사고팔았나</div>
       <div class="ihead"><span>구간</span>${st.map(s=>'<span>'+s.gb+'</span>').join('')}</div>
       <div class="irow"><span class="ik">외국인</span>${st.map(s=>col(s.frgn)).join('')}</div>
       <div class="irow"><span class="ik">기관</span>${st.map(s=>col(s.orgn)).join('')}</div>
       <div class="mnote">개인은 시간대로는 제공되지 않아 일별로만 보입니다 · 기록 ${d.intraday_at||''}</div>`;
   }
-  async function openFlow(){
+  function TODAY8(){const t=new Date();
+    return t.getFullYear()+String(t.getMonth()+1).padStart(2,'0')+String(t.getDate()).padStart(2,'0');}
+  async function openFlow(date){
     flwmask.classList.add('on');
     flwbody.innerHTML='<div class="mintro">불러오는 중…</div>';
-    let d; try{d=await (await fetch('/api/flow/'+CURCODE+'?days=20')).json();}
+    let d; try{d=await (await fetch('/api/flow/'+CURCODE+'?days=20'+(date?'&date='+date:''))).json();}
     catch(e){flwbody.innerHTML='<div class="mintro">수급을 불러오지 못했습니다.</div>';return;}
     if(!d.days||!d.days.length){
       flwbody.innerHTML='<div class="mintro">수급 데이터가 없습니다.'+(d.error?'<br>'+d.error:'')+'</div>';return;}

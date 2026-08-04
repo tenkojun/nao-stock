@@ -371,7 +371,8 @@ def api_flow(code):
     """종목 수급 — 외국인·기관·개인을 같은 단위로. 일별 + 오늘 시간대별."""
     import flow_view
     try:
-        return jsonify(flow_view.build(code, int(request.args.get("days", 20))))
+        return jsonify(flow_view.build(code, int(request.args.get("days", 20)),
+                                       date=request.args.get("date") or None))
     except Exception as e:
         return jsonify({"code": code, "days": [], "error": f"{type(e).__name__}: {e}"})
 
