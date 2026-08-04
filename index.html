@@ -387,6 +387,14 @@
   </div>
 </div>
 
+<!-- 정보글 — 관리자가 올린 읽을거리 -->
+<div class="mask" id="artmask">
+  <div class="modal" style="width:min(920px,97vw);height:min(860px,92vh)">
+    <div class="mh"><span class="t">📄 정보글</span><span class="x" onclick="closeArt()">✕</span></div>
+    <div style="padding:14px 18px;overflow:auto" id="artbody"></div>
+  </div>
+</div>
+
 <!-- 간단 홈 — 큰 숫자·쉬운 말. 아버지 계정 기본 화면 -->
 <div id="simple">
   <div class="sp-wrap">
@@ -930,6 +938,7 @@
     ['🌐','시장 지수','코스피·코스닥','openMarket'],
     ['📊','관심종목 순위','내 종목 비교','openRank'],
     ['📖','공부','용어와 근거 논문','openStudy'],
+    ['📄','정보글','관리자가 올린 읽을거리','openArt'],
     ['✦','AI 전망','물어보기','openAI'],
   ];
 
@@ -1186,6 +1195,75 @@
       ['frgn','orgn','prsn'].map(k=>flwRow(d,k,54)).join('')+
       flwIntraday(d)+
       `<div class="mfoot">출처 한국투자증권 · 수급은 방향 참고이며 매수 추천이 아닙니다</div>`;
+  }
+
+  // ── 정보글 (관리자가 쓰는 읽을거리) ─────────────────────────────
+  // 공지와 같은 GitHub 중계를 쓰되 kind='article' 로 갈라 둔다.
+  let ART={admin:false,notices:[]}, ARTOPEN=null;
+  artmask.addEventListener('click',e=>{if(e.target===artmask)closeArt();});
+  function closeArt(){artmask.classList.remove('on');}
+  async function openArt(){
+    artmask.classList.add('on');
+    artbody.innerHTML='<div class="mintro">불러오는 중…</div>';
+    try{ART=await (await fetch('/api/notice?kind=article&force=1',
+      {headers:authHeaders()})).json();}catch(e){
+      artbody.innerHTML='<div class="mintro">불러오지 못했습니다.</div>';return;}
+    ARTOPEN=null; artRender();
+  }
+  function artRender(){
+    const write=ART.admin?`<div class="mcard">
+        <span class="mlabel">새 정보글 쓰기</span>
+        <input id="artT" placeholder="제목" maxlength="80"
+          style="width:100%;padding:7px 9px;border:1px solid var(--rule);background:var(--paper-hi);color:var(--ink);font-family:inherit;font-size:14px">
+        <textarea id="artB" rows="8" placeholder="내용 (줄바꿈 그대로 보입니다)" maxlength="20000"
+          style="width:100%;margin-top:6px;padding:7px 9px;border:1px solid var(--rule);background:var(--paper-hi);color:var(--ink);font-family:inherit;font-size:14px;resize:vertical"></textarea>
+        <div style="display:flex;gap:6px;align-items:center;margin-top:8px">
+          <button class="btn" onclick="artPublish()">올리기</button>
+          <span style="font-size:11px;color:var(--ox)">⚠ 공개 저장소에 올라갑니다 — 개인정보는 쓰지 마세요</span>
+        </div>
+        <div class="mnote" id="artMsg" style="display:none"></div></div>`:'';
+    if(ARTOPEN){
+      const a=ARTOPEN;
+      artbody.innerHTML=`<div style="cursor:pointer;font-size:12.5px;color:var(--ink-soft);margin-bottom:10px" onclick="ARTOPEN=null;artRender()">← 목록으로</div>
+        <div style="font-size:20px;font-weight:700;line-height:1.35">${esc(a.title)}</div>
+        <div class="mnote" style="font-style:normal;margin-top:4px">${esc(a.author||'')} · ${esc(a.at||'')}</div>
+        <div style="font-size:14.5px;line-height:1.85;margin-top:14px;white-space:pre-wrap">${esc(a.body)}</div>
+        ${ART.admin?`<div style="margin-top:16px"><button class="btn" onclick="artDelete('${a.id}')">이 글 삭제</button></div>`:''}`;
+      return;
+    }
+    const list=(ART.notices||[]).map(a=>`<div class="mcard" style="cursor:pointer"
+        onclick="ARTOPEN=(ART.notices||[]).find(x=>x.id==='${a.id}');artRender();artMarkRead('${a.id}')">
+        <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline">
+          <b style="font-size:15px">${a.unread?'<span style="color:var(--ox)">● </span>':''}${esc(a.title)}</b>
+          <span style="font-size:11px;color:var(--ink-faint);white-space:nowrap">${esc(a.at||'')}</span></div>
+        <div class="mnote" style="font-style:normal;margin-top:4px">${esc((a.body||'').slice(0,90))}${(a.body||'').length>90?'…':''}</div>
+      </div>`).join('')||'<div class="mintro">아직 올라온 글이 없습니다.</div>';
+    artbody.innerHTML=write+list+`<div class="mfoot">관리자가 올린 글입니다 · 몇 분 간격으로 확인합니다</div>`;
+  }
+  async function artMarkRead(id){
+    try{await fetch('/api/notice',{method:'POST',
+      headers:Object.assign({'Content-Type':'application/json'},authHeaders()),
+      body:JSON.stringify({action:'read',ids:[id]})});}catch(e){}
+  }
+  async function artPublish(){
+    const t=document.getElementById('artT'),b=document.getElementById('artB');
+    const m=(x,ok)=>{const e=document.getElementById('artMsg');if(!e)return;
+      e.style.display='block';e.style.fontStyle='normal';
+      e.style.color=ok?'var(--sage)':'var(--ox)';e.textContent=x;};
+    if(!t.value.trim()){m('제목을 입력해 주세요.',false);return;}
+    m('올리는 중…',true);
+    try{const r=await fetch('/api/notice?kind=article',{method:'POST',
+      headers:Object.assign({'Content-Type':'application/json'},authHeaders()),
+      body:JSON.stringify({action:'publish',kind:'article',title:t.value,body:b.value})});
+      const j=await r.json(); ART=Object.assign(ART,j); ARTOPEN=null; artRender();
+      if(!j.ok)m(j.msg||'',false);}catch(e){m('올리지 못했습니다.',false);}
+  }
+  async function artDelete(id){
+    if(!confirm('이 글을 지울까요?'))return;
+    try{const r=await fetch('/api/notice?kind=article',{method:'POST',
+      headers:Object.assign({'Content-Type':'application/json'},authHeaders()),
+      body:JSON.stringify({action:'delete',kind:'article',id})});
+      ART=await r.json(); ARTOPEN=null; artRender();}catch(e){}
   }
 
   // ── 종목 검색 ───────────────────────────────────────────────────
@@ -2210,7 +2288,8 @@
     stock:[["🏦","수급 — 누가 사고 파나","외국인·기관·개인을 한 자리에서","openFlow"],
            ["📋","종목 평가","이 회사가 싼지·잘 버는지 (가치·수익성)","openEval"],
            ["✅","체크리스트","항목별 점검과 근거 논문","openCheck"],
-           ["📰","뉴스","이 종목 소식과 시장 속보","openNews"]],
+           ["📰","뉴스","이 종목 소식과 시장 속보","openNews"],
+           ["📄","정보글","관리자가 올린 읽을거리","openArt"]],
     market:[["🌐","시장 지수","코스피·코스닥과 주요 지표","openMarket"],
             ["💸","수급 지도","오늘 큰손 자금이 어디로 가는지 (참고용)","openFlowmap"],
             ["🌏","시장 흐름","날씨·자금 흐름 한눈에 보기 (참고용)","openFlowOS"],

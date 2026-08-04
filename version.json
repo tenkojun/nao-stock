@@ -1,8 +1,8 @@
 {
- "version": "1.8.4",
+ "version": "1.8.5",
  "released": "2026-08-04",
  "notes": [
-  "지금 어떻게 할지 문장으로 알려드립니다 — 전고점·평단·세금·흔들림 범위를 근거로"
+  "정보글 탭이 생겼습니다 — 관리자가 올린 읽을거리를 볼 수 있습니다"
  ],
  "min_python": "3.9",
  "requires": [
@@ -13,5 +13,5 @@
   "finance-datareader",
   "pywebview"
  ],
- "sha256": "5a59f0022e0e499f20c82decb241f5aba11210464765ccffc21d022a9e2fa97e"
+ "sha256": "a56392dcdf3f02772a88a229a73dd0d5d2f19031c06bec6cc843ccfd65c69d46"
 }

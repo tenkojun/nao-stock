@@ -125,28 +125,35 @@ def mark_read(user, ids=None):
     return {"ok": True, "unread": 0}
 
 
-def board(user="father", force=False):
-    """화면에 줄 최종 형태 — 글 목록 + 안 읽은 개수."""
+def board(user="father", force=False, kind=None):
+    """화면에 줄 최종 형태 — 글 목록 + 안 읽은 개수.
+    kind: 'notice'(짧은 알림) | 'article'(정보글). None 이면 전부."""
     got = fetch(force)
     seen = _read_ids(user)
     items = []
     for n in got.get("notices", []):
-        items.append({**n, "unread": bool(n.get("id") and n["id"] not in seen)})
-    return {"ok": got.get("ok", False), "msg": got.get("msg"),
+        k = n.get("kind") or "notice"          # 옛 글은 kind 가 없다 → 공지로 본다
+        if kind and k != kind:
+            continue
+        items.append({**n, "kind": k, "unread": bool(n.get("id") and n["id"] not in seen)})
+    return {"ok": got.get("ok", False), "msg": got.get("msg"), "kind": kind,
             "notices": items, "unread": sum(1 for i in items if i["unread"]),
             "fetched": _load(_CACHE, {}).get("fetched")}
 
 
 # ── 발행(관리자 PC 전용) ──────────────────────────────────────────
-def publish(title, body, author="관리자"):
-    """공지를 저장소에 올린다. **공개 저장소이므로 내용이 공개된다.**"""
+def publish(title, body, author="관리자", kind="notice"):
+    """글을 저장소에 올린다. **공개 저장소이므로 내용이 공개된다.**
+    kind: 'notice'(짧은 알림) | 'article'(정보글 — 길게 써도 된다)"""
     title, body = (title or "").strip(), (body or "").strip()
+    kind = "article" if kind == "article" else "notice"
+    limit = 20000 if kind == "article" else 4000
     if not title:
         return {"ok": False, "msg": "제목을 입력해 주세요."}
     if len(title) > 80:
         return {"ok": False, "msg": "제목은 80자 이내로 써 주세요."}
-    if len(body) > 4000:
-        return {"ok": False, "msg": "내용이 너무 깁니다(4000자 이내)."}
+    if len(body) > limit:
+        return {"ok": False, "msg": f"내용이 너무 깁니다({limit:,}자 이내)."}
     repo = _repo()
     if not repo:
         return {"ok": False, "msg": "배포처가 설정되지 않았습니다(update_config.json)."}
@@ -163,12 +170,12 @@ def publish(title, body, author="관리자"):
         return {"ok": False, "msg": f"기존 글을 읽지 못했습니다({type(e).__name__})."}
 
     items.insert(0, {"id": f"n{int(time.time())}", "at": time.strftime("%Y-%m-%d %H:%M"),
-                     "title": title, "body": body, "author": author})
+                     "title": title, "body": body, "author": author, "kind": kind})
     items = items[:_MAX]
     payload = json.dumps({"notices": items}, ensure_ascii=False, indent=1)
 
     url, h = _api(repo, token)
-    data = {"message": f"공지: {title[:50]}",
+    data = {"message": f"{'정보글' if kind == 'article' else '공지'}: {title[:50]}",
             "content": base64.b64encode(payload.encode("utf-8")).decode("ascii"),
             "branch": "main"}
     if sha:
