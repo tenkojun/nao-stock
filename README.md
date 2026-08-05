@@ -42,13 +42,15 @@
 
 ### ✅ 합니다 — 계산과 기록
 
+- **지금 어떻게 할지 문장으로** — 살 때 / 지켜볼 때 / 덜어낼 때
+- **평단가 기준 행동 분석** — 처분효과·손실회피 등 검증된 연구 기반
 - 이번 달 여윳돈 배분 계산
 - 계좌 쏠림·집중도 진단
 - 세금·수수료·호가 스프레드 왕복비용
-- 변동성·분산 계산
+- 몬테카를로 변동 범위(예측 아님)
+- 외국인·기관·개인 수급 — 일별 + 시간대별
 - 매매 이유와 계획 기록(기록장)
-- 지금 가격의 위치(고점 대비·이동평균 대비)
-- 재무 상태·수급 흐름 표시
+- 실시간 뉴스(연합뉴스·아시아경제·한국경제)
 
 </td>
 <td width="50%" valign="top">
@@ -90,6 +92,25 @@
 | `B` | **The Total Cost of Transactions on the NYSE** — Berkowitz, Logue & Noser (1988), *J. of Finance* · [DOI](https://doi.org/10.1111/j.1540-6261.1988.tb04593.x) | VWAP — 집행 기준선 |
 | `B` | **Momentum Crashes** — Daniel & Moskowitz (2016), *J. of Financial Economics* · [DOI](https://doi.org/10.1016/j.jfineco.2015.12.002) | 모멘텀이 무너지는 국면 경고 |
 | `C` | **Evidence of Predictable Behavior of Security Returns** — Jegadeesh (1990), *J. of Finance* · [DOI](https://doi.org/10.1111/j.1540-6261.1990.tb05110.x) | 단기 반전 — 약해서 참고 관찰로만 |
+
+<br>
+
+### 평단가 기준 행동 분석
+
+가격 예측은 검증에서 남지 않았지만, **평단가를 기준으로 사람이 어떻게 행동하는지**는
+여러 시장·여러 표본에서 반복 확인된 분야입니다. 예측이 아니라 *내가 빠지기 쉬운 함정*을
+짚는 것이라 위 원칙과 충돌하지 않습니다. 인용한 논문은 **DOI를 조회해 실재를 확인**했습니다.
+
+| 논문 | 앱에서 하는 말 |
+|---|---|
+| **Are Investors Reluctant to Realize Their Losses?** — Odean (1998), *J. of Finance* · [DOI](https://doi.org/10.1111/0022-1082.00072) | 이익 구간에서 "지금이 팔고 싶어지는 구간입니다" |
+| **The Disposition to Sell Winners Too Early…** — Shefrin & Statman (1985), *J. of Finance* · [DOI](https://doi.org/10.1111/j.1540-6261.1985.tb05002.x) | 작은 이익에서도 기우는 쪽 |
+| **Prospect Theory** — Kahneman & Tversky (1979), *Econometrica* · [DOI](https://doi.org/10.2307/1914185) | 손실 구간에서 "지금이 못 파는 구간입니다" · 물타기 경고 |
+| **Prospect Theory, Mental Accounting, and Momentum** — Grinblatt & Han (2005), *JFE* · [DOI](https://doi.org/10.1016/j.jfineco.2004.10.006) | 본전 근처에서 매매가 몰리는 것 |
+| **The 52-Week High and Momentum Investing** — George & Hwang (2004), *J. of Finance* · [DOI](https://doi.org/10.1111/j.1540-6261.2004.00695.x) | 고점이 준거점이 되는 것 |
+| **Trading Is Hazardous to Your Wealth** — Barber & Odean (2000), *J. of Finance* · [DOI](https://doi.org/10.1111/0022-1082.00226) | 잦은 매매 경고 |
+| **Just How Much Do Individual Investors Lose by Trading?** — Barber, Lee, Liu & Odean (2009), *RFS* · [DOI](https://doi.org/10.1093/rfs/hhn046) | 짧은 보유 + 이익일 때 |
+| **Foundations of Technical Analysis** — Lo, Mamaysky & Wang (2000), *J. of Finance* · [DOI](https://doi.org/10.1111/0022-1082.00265) | 차트 모양을 **근거로 쓰지 않는 이유** |
 
 <br>
 
@@ -135,6 +156,18 @@
 
 <br>
 
+## 화면 모드
+
+| 모드 | 누구를 위한 것 |
+|---|---|
+| **간단** | 큰 글씨·쉬운 말. 내 돈, 지금 할 일, 종목 그림, 수급, 일정, 속보를 한 화면에 |
+| **자세히** | 캔들 차트·지표·체크리스트·미시구조까지 전부 |
+| **관리자** | 자세히 + 관리 콘솔(상태 점검·공지/정보글 작성·기록) |
+
+간단 모드도 창 크기를 다 쓰고, 자세히 보기의 기능을 모두 열 수 있습니다.
+
+<br>
+
 ## 설치
 
 ```bash
@@ -144,9 +177,12 @@ pip install flask numpy requests pandas finance-datareader pywebview
 ```
 
 `나오주식_실행.bat`을 한 번 실행하면 필요한 라이브러리를 설치하고
-**바탕화면에 아이콘을 만들어 줍니다.** 다음부터는 아이콘만 누르면 됩니다.
+**`C:\나오주식`에 자리잡은 뒤 바탕화면 아이콘을 만들어 줍니다.**
+다음부터는 아이콘만 누르면 됩니다.
 
 주소창도, 탭도, 검은 명령창도 뜨지 않습니다 — 자체 창으로 열립니다.
+파이썬 없이 쓰려면 [Releases](https://github.com/tenkojun/nao-stock/releases)의
+EXE 설치본을 쓰면 됩니다.
 
 ```bash
 pythonw 나오주식.pyw     # 프로그램 창으로 실행
@@ -168,15 +204,26 @@ server.py             Flask 백엔드 · REST API
 index.html            단일 화면 UI (Lightweight Charts)
 engine/
   analyze.py            종목 분석 파이프라인
-  kis_kr.py             한국투자증권 실시간 시세·투자자별 수급
+  timing.py             살 때 / 지켜볼 때 / 덜어낼 때 판정
+  advice.py             문장 조언 (사실·계산·분포·행동)
+  psych.py              평단가 기준 행동 분석 (검증 논문만)
+  kis_kr.py             한국투자증권 실시간 시세·분봉·투자자별 수급
   krx_api.py            KRX 시점정합 유니버스
+  session_rec.py        장중 시간대별 수급 기록기 (5분마다)
+  flow_view.py          외국인·기관·개인 수급 조립
+  stocks.py             종목 검색 (이름·시총 랭킹)
+  notice.py             공지·정보글 (GitHub 중계)
+  keys.py               API 키 보관 (환경변수 → 앱 → 사용자 폴더)
   costs.py              세금·스프레드 왕복비용
   allocate.py           여윳돈 배분 계산
   journal.py            매매 기록장
   validate.py           검증 하네스
   multiple_testing.py   BH-FDR · Deflated Sharpe
   signal_engine/        근거 등록·신뢰도·충돌 해소
-tools/check.py        배포 전 자동 점검
+tools/
+  check.py              배포 전 자동 점검 (9종)
+  build_exe.py          EXE 굽기 · pack_exe.py 전달본 만들기
+  publish.py            릴리스 발행 (순서·해시 검사)
 ```
 
 <br>

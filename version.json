@@ -1,9 +1,8 @@
 {
- "version": "1.8.8",
+ "version": "1.8.9",
  "released": "2026-08-05",
  "notes": [
-  "간단 화면에 수급과 일정이 들어갔습니다",
-  "환율·해외지수가 안 보이던 문제를 고쳤습니다"
+  "설명 문서를 최신 기능에 맞게 정리했습니다"
  ],
  "min_python": "3.9",
  "requires": [
@@ -14,5 +13,5 @@
   "finance-datareader",
   "pywebview"
  ],
- "sha256": "c50be9bc668b00f75d564fd5c3f291547b066029b839cdb357d0cda7bbfb99c2"
+ "sha256": "e9b24f650ac5839d88c7b5b87ab3a0d3816ca28b1bd94049aa28fbcd6839d3f7"
 }
