@@ -95,6 +95,10 @@
   .sp-foot{text-align:center;font-size:11.5px;color:var(--ink-faint);margin-top:26px;line-height:1.7}
   .sp-nc{background:rgba(154,123,63,.14);border:1px solid var(--ochre);border-radius:13px;
     padding:13px 16px;margin-bottom:12px;cursor:pointer}
+  .admrow{display:flex;justify-content:space-between;gap:10px;padding:5px 0;font-size:13px;
+    border-top:1px solid var(--rule-soft)}
+  .admrow:first-of-type{border-top:none}
+  .admrow span{color:var(--ink-soft)}
   .sp-nw{display:block;text-decoration:none;padding:9px 0;border-top:1px solid var(--rule-soft)}
   .sp-nw .t{font-size:14px;color:var(--ink);line-height:1.45}
   .sp-nw .m{font-size:11.5px;color:var(--ink-faint);margin-top:3px}
@@ -302,6 +306,7 @@
       <button class="btn" onclick="openStudy()">📖 공부</button>
       <span id="whoami" style="font-size:11px;color:var(--ink-faint);margin-left:6px" title="로그아웃하려면 누르세요" onclick="if(confirm('로그아웃 하시겠습니까?'))logout()"></span>
       <button class="btn ai" onclick="openAI()">✦ AI 전망</button>
+      <span id="admBtn" style="cursor:pointer;display:none" onclick="openAdmin()" title="관리자 콘솔">🛠</span>
       <span style="cursor:pointer" onclick="simpleShow()" title="간단 화면으로">🏠</span>
       <span style="position:relative;cursor:pointer" onclick="openNotice()" title="공지">🔔<span id="ncBadge"></span></span>
       <span><b id="clk">14:32:08</b></span><span style="cursor:pointer" onclick="openSet()" title="설정">⚙</span>
@@ -391,6 +396,14 @@
   </div>
 </div>
 
+<!-- 관리자 콘솔 — 관리 기능을 한자리에 -->
+<div class="mask" id="admmask">
+  <div class="modal" style="width:min(920px,97vw);height:min(860px,92vh)">
+    <div class="mh"><span class="t">🛠 관리자 콘솔</span><span class="x" onclick="closeAdmin()">✕</span></div>
+    <div style="padding:14px 18px;overflow:auto" id="admbody"></div>
+  </div>
+</div>
+
 <!-- 정보글 — 관리자가 올린 읽을거리 -->
 <div class="mask" id="artmask">
   <div class="modal" style="width:min(920px,97vw);height:min(860px,92vh)">
@@ -441,6 +454,7 @@
     <div class="mh"><span class="t">⚙ 설정 · Settings</span><span class="x" onclick="closeSet()">✕</span></div>
     <div style="padding:16px 20px;overflow:auto;max-height:72vh" id="setbody">
       <div class="seth">모습 · Appearance</div>
+      <div class="setrow"><span class="setk">화면 모드</span><span class="segbtns" id="segMode"></span></div>
       <div class="setrow"><span class="setk">테마</span><span class="segbtns" id="segTheme"></span></div>
       <div class="setrow"><span class="setk">글자·화면 크기</span><span class="segbtns" id="segSize"></span></div>
       <div class="setrow"><span class="setk">상승 / 하락 색</span><span class="segbtns" id="segColor"></span></div>
@@ -697,6 +711,8 @@
     if(typeof prefsSave==='function')prefsSave({settings:SET});
   }
   const SETDEF={
+    // 관리자 항목은 관리자 계정에서만 붙인다(openSet 에서 처리)
+    mode:[["간단","simple"],["자세히","pro"]],
     theme:[["종이","paper"],["밤","dark"],["또렷하게","high"]],
     size:[["작게","0.9"],["보통","1"],["크게","1.15"],["더 크게","1.3"]],
     color:[["한국식 빨강↑","kr"],["글로벌 초록↑","us"]],
@@ -708,6 +724,15 @@
     basis:[["종가 확정","close"],["실시간 참고","live"]],
     refresh:[["끔","off"],["30초","30"],["60초","60"]],
   };
+  // 화면 모드는 셋 — 간단(큰 글씨 홈) / 자세히(터미널) / 관리자(자세히 + 관리 콘솔)
+  function applyMode(){
+    const m=SET.mode||'simple';
+    const sp=document.getElementById('simple');
+    if(sp)sp.classList.toggle('on',m==='simple');
+    if(m==='admin'&&AUTH.user&&AUTH.user.role==='admin'){
+      if(typeof openAdmin==='function')openAdmin();
+    }
+  }
   function applySet(){
     applyTheme();
     document.body.style.zoom=SET.size;
@@ -718,6 +743,7 @@
     if(typeof themeChart==='function')themeChart();
     if(candle)candle.applyOptions({upColor:upC,downColor:downC,wickUpColor:upC,wickDownColor:downC,borderUpColor:upC,borderDownColor:downC});
     if(chart)chart.applyOptions({grid:{vertLines:{visible:SET.grid==="on"},horzLines:{visible:SET.grid==="on"}}});
+    applyMode();                                   // 간단/자세히/관리자 전환
     if(refreshTimer){clearInterval(refreshTimer);refreshTimer=null;}
     if(SET.refresh!=="off")refreshTimer=setInterval(()=>loadStock(CURCODE),parseInt(SET.refresh)*1000);
     if(DATA)paint(DATA);
@@ -727,7 +753,11 @@
     box.querySelectorAll('button').forEach(b=>b.onclick=()=>{SET[key]=b.dataset.v;saveSettings();
       box.querySelectorAll('button').forEach(x=>x.classList.remove('on'));b.classList.add('on');applySet();});}
   function openSet(){setmask.classList.add('on');
-    ['theme','size','color','grid','view','markers','mccone','levels','basis','refresh'].forEach(k=>buildSeg('seg'+k[0].toUpperCase()+k.slice(1),k));
+    // 관리자 계정에서만 '관리자' 모드를 고를 수 있다
+    SETDEF.mode=(AUTH.user&&AUTH.user.role==='admin')
+      ? [["간단","simple"],["자세히","pro"],["관리자","admin"]]
+      : [["간단","simple"],["자세히","pro"]];
+    ['mode','theme','size','color','grid','view','markers','mccone','levels','basis','refresh'].forEach(k=>buildSeg('seg'+k[0].toUpperCase()+k.slice(1),k));
     loadKeys();
     fetch('/version.json').then(r=>r.json()).then(v=>{      // 표기는 항상 실제 버전
       const e=document.getElementById('setver'); if(e)e.textContent='v'+v.version;}).catch(()=>{});
@@ -1218,6 +1248,78 @@
       ['frgn','orgn','prsn'].map(k=>flwRow(d,k,54)).join('')+
       flwIntraday(d)+
       `<div class="mfoot">출처 한국투자증권 · 수급은 방향 참고이며 매수 추천이 아닙니다</div>`;
+  }
+
+  // ── 관리자 콘솔 ─────────────────────────────────────────────────
+  // 관리에 쓰는 것들이 설정·공지·정보글에 흩어져 있었다. 한자리에 모아 상태까지 보여준다.
+  admmask.addEventListener('click',e=>{if(e.target===admmask)closeAdmin();});
+  function closeAdmin(){admmask.classList.remove('on');}
+  async function openAdmin(){
+    if(!(AUTH.user&&AUTH.user.role==='admin')){alert('관리자 계정에서만 열 수 있습니다.');return;}
+    admmask.classList.add('on');
+    admbody.innerHTML='<div class="mintro">상태를 확인하는 중…</div>';
+    const g=async(u)=>{try{return await (await fetch(u,{headers:authHeaders()})).json();}catch(e){return null;}};
+    const [ver,keys,ses,upd,art]=await Promise.all([
+      g('/version.json'), g('/api/keys'), g('/api/session'),
+      g('/api/update/check'), g('/api/notice?kind=article')]);
+    const k=(keys&&keys.status)||{};
+    const dot=v=>v?'<span style="color:var(--sage)">●</span>':'<span style="color:var(--ox)">●</span>';
+    admbody.innerHTML=`
+      <div class="mintro">관리 기능을 한자리에 모았습니다. 아버지 계정에는 보이지 않습니다.</div>
+
+      <div class="mcard"><span class="mlabel">지금 상태</span>
+        <div class="admrow"><span>앱 버전</span><b>v${esc((ver&&ver.version)||'?')}</b></div>
+        <div class="admrow"><span>업데이트</span><b>${upd&&upd.has_update?'새 버전 '+esc(upd.latest)+' 있음':'최신'}</b></div>
+        <div class="admrow"><span>API 키</span><b>${dot(k.kis&&k.kis.set)} 한투 &nbsp; ${dot(k.krx&&k.krx.set)} KRX &nbsp; ${dot(k.claude&&k.claude.set)} Claude</b></div>
+        <div class="admrow"><span>키 위치</span><b>${esc((k.where)||'-')}</b></div>
+        <div class="admrow"><span>장중 기록기</span><b>${ses&&ses.running?'동작 중':'멈춤'} · 오늘 ${(ses&&ses.snaps_today)||0}컷 · 보관 ${(ses&&ses.dates||[]).length}일</b></div>
+        <div class="admrow"><span>장 상태</span><b>${ses&&ses.market_open?'열림':'닫힘'}</b></div>
+        <div class="admrow"><span>정보글</span><b>${(art&&art.notices||[]).length}건</b></div>
+      </div>
+
+      <div class="mcard"><span class="mlabel">글쓰기</span>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
+          <button class="btn" onclick="closeAdmin();openArt()">📄 정보글 쓰기</button>
+          <button class="btn" onclick="closeAdmin();openNotice()">🔔 공지 쓰기</button>
+        </div>
+        <div class="mnote">둘 다 공개 저장소로 나갑니다 — 개인정보는 쓰지 마세요.</div>
+      </div>
+
+      <div class="mcard"><span class="mlabel">설정·점검</span>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
+          <button class="btn" onclick="closeAdmin();openSet()">⚙ 설정 · API 키</button>
+          <button class="btn" onclick="admRecord()">지금 한 컷 기록</button>
+          <button class="btn" onclick="admCheckUpdate()">업데이트 확인</button>
+        </div>
+        <div class="mnote" id="admMsg" style="display:none"></div>
+      </div>
+
+      <div class="mcard"><span class="mlabel">화면 모드</span>
+        <div class="mnote" style="font-style:normal;margin-top:0">
+          <b>간단</b> — 큰 글씨 홈(아버지 기본) · <b>자세히</b> — 터미널 화면 ·
+          <b>관리자</b> — 자세히 + 이 콘솔</div>
+        <div style="display:flex;gap:6px;margin-top:8px">
+          <button class="btn" onclick="admMode('simple')">간단으로</button>
+          <button class="btn" onclick="admMode('pro')">자세히로</button>
+        </div>
+      </div>
+      <div class="mfoot">개발 정준화</div>`;
+  }
+  function admMsg(t,ok){const e=document.getElementById('admMsg');if(!e)return;
+    e.style.display='block';e.style.fontStyle='normal';
+    e.style.color=ok?'var(--sage)':'var(--ox)';e.textContent=t;}
+  function admMode(m){SET.mode=m;saveSettings();closeAdmin();applyMode();}
+  async function admRecord(){
+    admMsg('기록 중…',true);
+    try{const j=await (await fetch('/api/session/record',{method:'POST',headers:authHeaders()})).json();
+      admMsg(j.ok?`기록했습니다 — 오늘 ${j.snaps}컷`:'실패: '+(j.msg||''),!!j.ok);}
+    catch(e){admMsg('기록하지 못했습니다.',false);}
+  }
+  async function admCheckUpdate(){
+    admMsg('확인 중…',true);
+    try{const j=await (await fetch('/api/update/check?force=1')).json();
+      admMsg(j.has_update?`새 버전 ${j.latest} 있습니다`:`최신입니다 (v${j.current})`,true);}
+    catch(e){admMsg('확인하지 못했습니다.',false);}
   }
 
   // ── 정보글 (관리자가 쓰는 읽을거리) ─────────────────────────────
@@ -2407,7 +2509,9 @@
   async function startApp(){
     bootProgress((AUTH.user?AUTH.user.name+'님, ':'')+'설정을 불러오는 중입니다…');
     if(AUTH.user){const el=document.getElementById('whoami');
-      if(el)el.textContent=AUTH.user.name+(AUTH.user.role==='admin'?' (관리)':'');}
+      if(el)el.textContent=AUTH.user.name+(AUTH.user.role==='admin'?' (관리)':'');
+      const ab=document.getElementById('admBtn');       // 🛠 는 관리자에게만
+      if(ab)ab.style.display=(AUTH.user.role==='admin')?'':'none';}
     await prefsLoad();                       // 서버에 보관된 설정·보유종목 복원
     bootProgress((AUTH.user?AUTH.user.name+'님, ':'')+'시세를 불러오는 중입니다…');
     applySet();
@@ -2417,6 +2521,7 @@
     setTimeout(bootDone,1400);
     // 계정별 기본 화면 — 관리자는 전문, 그 외는 간단. 한 번 바꾸면 그 선택을 기억한다.
     if(!SET.mode)SET.mode=(AUTH.user&&AUTH.user.role==='admin')?'pro':'simple';
+    if(SET.mode==='admin'&&!(AUTH.user&&AUTH.user.role==='admin'))SET.mode='simple';
     if(SET.mode==='simple')setTimeout(simpleOpen,1500);
   }
   function bootStart(){
