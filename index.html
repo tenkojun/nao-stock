@@ -95,6 +95,10 @@
   .sp-foot{text-align:center;font-size:11.5px;color:var(--ink-faint);margin-top:26px;line-height:1.7}
   .sp-nc{background:rgba(154,123,63,.14);border:1px solid var(--ochre);border-radius:13px;
     padding:13px 16px;margin-bottom:12px;cursor:pointer}
+  .sp-nw{display:block;text-decoration:none;padding:9px 0;border-top:1px solid var(--rule-soft)}
+  .sp-nw .t{font-size:14px;color:var(--ink);line-height:1.45}
+  .sp-nw .m{font-size:11.5px;color:var(--ink-faint);margin-top:3px}
+  .sp-nw:hover .t{color:var(--ox)}
   /* 문장 조언 — 사실은 담백하게, 결론은 눈에 띄게 */
   .ad-facts{margin-top:8px;font-size:13.5px;color:var(--ink-soft);line-height:1.85}
   .ad-line{font-size:14.5px;line-height:1.7;margin-top:7px}
@@ -1045,6 +1049,8 @@
           </div>
           ${idx?`<div class="sp-card"><div class="sp-lab" style="margin-bottom:8px">오늘 시장</div>
             <div class="sp-idx">${idx}</div></div>`:''}
+          <div class="sp-card" id="spNews"><div class="sp-lab">지금 들어온 소식</div>
+            <div class="sp-note" style="margin-top:2px">불러오는 중…</div></div>
         </div>
         <div class="sp-span sp-card">
           <div class="sp-lab">더 보기 — 자세히 보기에 있는 기능을 여기서도 열 수 있습니다</div>
@@ -1061,6 +1067,23 @@
     spTimingRender(rows);
     const first=rows.length?rows[0]:{code:'005930',name:'삼성전자'};
     spChart(first.code,first.name,'D');
+    spNewsRender();
+  }
+
+  // 간단 화면의 속보 — 제목만, 최근 것 5개. 해석은 붙이지 않는다.
+  async function spNewsRender(){
+    const box=document.getElementById('spNews'); if(!box)return;
+    let d; try{d=await (await fetch('/api/news')).json();}catch(e){
+      box.innerHTML='<div class="sp-lab">지금 들어온 소식</div>'+
+        '<div class="sp-note" style="margin-top:2px">불러오지 못했습니다.</div>';return;}
+    const list=(d.market||[]).slice(0,5);
+    box.innerHTML='<div class="sp-lab">지금 들어온 소식</div>'+
+      (list.length?list.map(n=>`<a class="sp-nw" href="${n.url}" target="_blank">
+          <div class="t">${n.hot?'🔥 ':''}${esc(n.title)}</div>
+          <div class="m">${esc(n.source||'')} · ${esc(ago(n))}</div></a>`).join('')
+        :'<div class="sp-note" style="margin-top:2px">가져온 소식이 없습니다.</div>')+
+      '<button class="sp-btn ghost" onclick="simpleClose();openNews()">뉴스 더 보기</button>'+
+      '<div class="sp-note">제목과 출처를 그대로 전합니다. 이 앱이 해석하지 않습니다.</div>';
   }
 
   // 살 때 / 지켜볼 때 / 덜어낼 때 — 비중이 가장 치우친 종목 하나를 짚어 준다
@@ -1798,14 +1821,30 @@
   // ── 뉴스 모달 (종목 뉴스 + 시장 실시간 속보) ──
   function closeNews(){nwmask.classList.remove('on');}
   nwmask.addEventListener('click',e=>{if(e.target===nwmask)closeNews();});
+  // '52분 전' 처럼 보여준다 — 날짜 문자열보다 지금과의 거리가 바로 읽힌다
+  const ago=n=>{const m=n.mins;
+    if(m==null)return n.date||'';
+    if(m<1)return '방금';
+    if(m<60)return m+'분 전';
+    if(m<1440)return Math.floor(m/60)+'시간 전';
+    return n.date||'';};
   function nwRow(n,hot){
+    const fresh=(n.mins!=null&&n.mins<=30);
     return `<a href="${n.url}" target="_blank" style="display:block;text-decoration:none;border-bottom:1px solid var(--rule-soft);padding:9px 2px">
       <div style="font-size:13px;color:var(--ink);line-height:1.45">${hot&&n.hot?'<span style="color:var(--ox);font-weight:700">🔥 </span>':''}${n.title}</div>
-      <div style="font-size:10.5px;color:var(--ink-faint);margin-top:3px">${n.source||''} · ${n.date||''}</div></a>`;
+      <div style="font-size:10.5px;color:${fresh?'var(--sage)':'var(--ink-faint)'};margin-top:3px">
+        ${n.source||''} · ${ago(n)}</div></a>`;
   }
+  let NWTIMER=null;
   function openNews(){
     nwmask.classList.add('on');
     nwbody.innerHTML='<div style="padding:20px;color:var(--ink-soft)">불러오는 중…</div>';
+    nwLoad();
+    if(NWTIMER)clearInterval(NWTIMER);
+    NWTIMER=setInterval(()=>{ if(nwmask.classList.contains('on'))nwLoad(); // 열려 있을 때만
+      else {clearInterval(NWTIMER);NWTIMER=null;} },120000);              // 2분마다
+  }
+  function nwLoad(){
     const code=DATA?DATA.code:'';
     fetch('/api/news'+(code?('?code='+code):'')).then(r=>r.json()).then(d=>{
       NEWSDATA=d;
@@ -1814,7 +1853,7 @@
       nwbody.innerHTML=`<div style="font-size:11px;color:var(--ink-faint);line-height:1.5;margin-bottom:10px">${d.caveat||''}</div>
         ${st?`<div style="font-family:var(--eng);font-size:9px;letter-spacing:.14em;color:var(--ink-faint);text-transform:uppercase;margin:6px 0 2px">${(DATA&&DATA.name)||''} 종목 뉴스</div>${st}`:''}
         <div style="font-family:var(--eng);font-size:9px;letter-spacing:.14em;color:var(--ink-faint);text-transform:uppercase;margin:16px 0 2px">시장 실시간 속보 · 🔥=긴급 키워드</div>${mk}
-        <div class="mfoot">제목·출처 그대로 전달 · 자동 해석 없음 · ${d.updated||''} 기준</div>`;
+        <div class="mfoot">제목·출처 그대로 전달 · 자동 해석 없음 · ${d.updated||''} 기준 · 2분마다 새로 확인</div>`;
     }).catch(()=>{nwbody.innerHTML='<div style="padding:20px;color:var(--ox)">뉴스를 불러오지 못했습니다.</div>';});
   }
 
