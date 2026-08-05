@@ -16,6 +16,17 @@ _TICKERS = [
 ]
 
 
+def _fin(v):
+    """NaN·무한대를 걸러낸다.
+    ⚠ 파이썬 json 은 NaN 을 그대로 내보내는데 그건 **유효한 JSON 이 아니다.**
+       브라우저 JSON.parse 가 통째로 실패해 매크로·캘린더가 조용히 안 떴다."""
+    try:
+        f = float(v)
+        return f if f == f and f not in (float("inf"), float("-inf")) else None
+    except Exception:
+        return None
+
+
 def macro_snapshot():
     """FDR 기반 매크로 스냅샷. 실패 항목은 건너뛴다(부분 실패 허용)."""
     import FinanceDataReader as fdr
@@ -25,9 +36,13 @@ def macro_snapshot():
             d = fdr.DataReader(sym).tail(3)
             if d is None or len(d) < 2:
                 continue
-            c = float(d["Close"].iloc[-1]); p = float(d["Close"].iloc[-2])
-            chg = (c / p - 1) * 100 if p else 0
-            out.append({"label": label, "value": round(c, 2), "chg": round(chg, 2),
+            c = _fin(d["Close"].iloc[-1])
+            p = _fin(d["Close"].iloc[-2])
+            if c is None:
+                continue                       # 값이 없으면 항목 자체를 뺀다
+            chg = _fin((c / p - 1) * 100) if p else 0.0
+            out.append({"label": label, "value": round(c, 2),
+                        "chg": round(chg, 2) if chg is not None else 0.0,
                         "kind": kind})
         except Exception:
             continue
@@ -41,11 +56,51 @@ def _second_thursday(y, m):
     return th[1] if len(th) > 1 else None
 
 
+def recent_holidays(back=60):
+    """지난 휴장일 — 평일인데 지수 데이터가 없는 날. **확인된 사실**이다.
+    ⚠ 앞으로의 휴장일은 넣지 않는다. KRX 에 휴장일 API 가 없어 확인할 방법이 없고,
+       음력 명절을 추측해 넣으면 틀릴 수 있다."""
+    try:
+        import FinanceDataReader as fdr
+        import pandas as pd
+        start = (date.today() - timedelta(days=back)).strftime("%Y-%m-%d")
+        df = fdr.DataReader("KS11", start)
+        got = {d.strftime("%Y-%m-%d") for d in df.index}
+        if not got:
+            return []
+        allw = pd.bdate_range(min(got), max(got)).strftime("%Y-%m-%d").tolist()
+        return [d for d in allw if d not in got]
+    except Exception:
+        return []
+
+
+def _last_bday(y, m):
+    """그 달 마지막 평일(배당락 기준일 근처 — 실제 휴장은 반영 못 한다)."""
+    d = date(y, m, 28)
+    while True:
+        n = d + timedelta(days=1)
+        if n.month != m:
+            break
+        d = n
+    while d.weekday() >= 5:
+        d -= timedelta(days=1)
+    return d
+
+
 def calendar_events(days=100):
     """앞으로 days일 이내의 '계산 가능한' 확정 일정만."""
     today = date.today()
     end = today + timedelta(days=days)
     ev = []
+    # 분기 배당락 — 국내도 분기배당이 늘어 3·6·9월 말도 함께 본다
+    for m0 in (3, 6, 9):
+        for y in (today.year, today.year + 1):
+            t = _last_bday(y, m0) - timedelta(days=1)
+            if today <= t <= end:
+                ev.append({"date": t.isoformat(), "title": f"{m0}월 분기배당 기준일(전후)",
+                           "kind": "배당",
+                           "note": "분기배당을 주는 회사는 이 무렵 배당락이 있습니다. "
+                                   "배당만큼 주가가 조정되는 것이라 하락과 다릅니다."})
     # 선물·옵션 동시만기 (매월 두 번째 목요일)
     for k in range(0, 3):
         m = today.month + k; y = today.year + (m - 1) // 12; m = (m - 1) % 12 + 1
@@ -75,4 +130,21 @@ def calendar_events(days=100):
         d = datetime.fromisoformat(e["date"]).date()
         e["dday"] = (d - today).days
         e["label"] = d.strftime("%m·%d")
+        e["soon"] = 0 <= e["dday"] <= 7          # 이번 주 안에 있는 일정
     return ev[:8]
+
+
+def calendar():
+    """화면용 — 앞으로의 일정 + 지난 휴장일(사실) + 다음 거래일."""
+    hol = recent_holidays()
+    today = date.today()
+    nxt = today
+    for _ in range(10):                          # 다음 평일(휴장 반영은 못 함)
+        nxt += timedelta(days=1)
+        if nxt.weekday() < 5:
+            break
+    return {"events": calendar_events(),
+            "recent_holidays": hol[-5:],
+            "next_bday": nxt.isoformat(),
+            "note": "계산으로 확정되는 일정만 넣었습니다. 앞으로의 휴장일은 확인할 "
+                    "수 있는 공개 자료가 없어 넣지 않았습니다."}

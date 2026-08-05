@@ -95,6 +95,20 @@
   .sp-foot{text-align:center;font-size:11.5px;color:var(--ink-faint);margin-top:26px;line-height:1.7}
   .sp-nc{background:rgba(154,123,63,.14);border:1px solid var(--ochre);border-radius:13px;
     padding:13px 16px;margin-bottom:12px;cursor:pointer}
+  /* 간단 화면 수급 — 방향이 먼저 보이게 */
+  .spf{display:flex;align-items:center;gap:9px;margin-top:9px;font-size:13.5px}
+  .spf .n{width:48px;flex:none;color:var(--ink-soft)}
+  .spf .bar{flex:1;height:9px;background:var(--paper-lo);border-radius:5px;overflow:hidden}
+  .spf .bar i{display:block;height:100%;border-radius:5px}
+  .spf .v{width:82px;text-align:right;font-family:ui-monospace,monospace;font-size:12.5px}
+  /* 다가오는 일정 */
+  .spc{display:flex;align-items:flex-start;gap:9px;padding:9px 0;
+    border-top:1px solid var(--rule-soft)}
+  .spc.soon{background:rgba(154,123,63,.10);border-radius:8px;padding:9px 8px}
+  .spc .d{width:44px;flex:none;font-family:ui-monospace,monospace;font-size:12px;color:var(--ink-faint)}
+  .spc .t{font-size:14px;line-height:1.35}
+  .spc .m{font-size:11.5px;color:var(--ink-faint);line-height:1.5;margin-top:2px}
+  .spc .dd{margin-left:auto;flex:none;font-size:11.5px;color:var(--ink-soft);white-space:nowrap}
   .admrow{display:flex;justify-content:space-between;gap:10px;padding:5px 0;font-size:13px;
     border-top:1px solid var(--rule-soft)}
   .admrow:first-of-type{border-top:none}
@@ -1079,6 +1093,10 @@
           </div>
           ${idx?`<div class="sp-card"><div class="sp-lab" style="margin-bottom:8px">오늘 시장</div>
             <div class="sp-idx">${idx}</div></div>`:''}
+          <div class="sp-card" id="spFlow"><div class="sp-lab">누가 사고 파나</div>
+            <div class="sp-note" style="margin-top:2px">불러오는 중…</div></div>
+          <div class="sp-card" id="spCal"><div class="sp-lab">다가오는 일정</div>
+            <div class="sp-note" style="margin-top:2px">불러오는 중…</div></div>
           <div class="sp-card" id="spNews"><div class="sp-lab">지금 들어온 소식</div>
             <div class="sp-note" style="margin-top:2px">불러오는 중…</div></div>
         </div>
@@ -1098,6 +1116,40 @@
     const first=rows.length?rows[0]:{code:'005930',name:'삼성전자'};
     spChart(first.code,first.name,'D');
     spNewsRender();
+    spFlowRender(first.code,first.name);
+    spCalRender();
+  }
+
+  // 간단 화면 수급 — 세 주체를 막대 하나씩으로. 숫자보다 방향이 먼저 보이게.
+  async function spFlowRender(code,name){
+    const box=document.getElementById('spFlow'); if(!box)return;
+    let d; try{d=await (await fetch('/api/flow/'+code+'?days=20')).json();}catch(e){return;}
+    if(!d||!d.days||!d.days.length){
+      box.innerHTML='<div class="sp-lab">누가 사고 파나</div><div class="sp-note" style="margin-top:2px">수급 자료가 없습니다.</div>';return;}
+    const items=['frgn','orgn','prsn'].map(k=>({k,...d[k]}));
+    const mx=Math.max(1,...items.map(x=>Math.abs(x.d5)));
+    box.innerHTML=`<div class="sp-lab">${esc(name||code)} · 최근 5일 누가 사고 파나</div>`+
+      items.map(x=>{
+        const pct=Math.round(Math.abs(x.d5)/mx*100), buy=x.d5>=0;
+        return `<div class="spf">
+          <span class="n">${x.label}</span>
+          <span class="bar"><i style="width:${pct}%;background:var(--${buy?'up':'down'}-c)"></i></span>
+          <span class="v ${buy?'up':'down'}">${buy?'＋':'－'}${man(Math.abs(x.d5))}</span></div>`;}).join('')+
+      `<button class="sp-btn ghost" onclick="simpleClose();openFlow()">자세히 보기</button>
+       <div class="sp-note">개인이 사는 쪽이면 외국인·기관이 파는 쪽인 경우가 많습니다. 방향 참고일 뿐 매수 신호가 아닙니다.</div>`;
+  }
+
+  // 다가오는 일정 — 계산으로 확정되는 것만
+  async function spCalRender(){
+    const box=document.getElementById('spCal'); if(!box)return;
+    let d; try{d=await (await fetch('/api/macro')).json();}catch(e){return;}
+    const ev=(d&&d.calendar)||[];        // 서버는 calendar 를 목록으로 준다
+    box.innerHTML='<div class="sp-lab">다가오는 일정</div>'+
+      (ev.length?ev.slice(0,4).map(e=>`<div class="spc${e.soon?' soon':''}">
+          <span class="d">${esc(e.label||'')}</span>
+          <span><div class="t">${esc(e.title)}</div><div class="m">${esc(e.note||'')}</div></span>
+          <span class="dd">${e.dday===0?'오늘':'D-'+e.dday}</span></div>`).join('')
+        :'<div class="sp-note" style="margin-top:2px">가까운 일정이 없습니다.</div>');
   }
 
   // 간단 화면의 속보 — 제목만, 최근 것 5개. 해석은 붙이지 않는다.

@@ -173,6 +173,32 @@ def check_bat():
         print("  --    .bat 파일 없음")
 
 
+def check_json_nan():
+    """서버가 살아 있으면 주요 API 응답이 **브라우저에서 파싱되는지** 확인한다.
+    파이썬 json 은 NaN/Infinity 를 그대로 내보내지만 그건 유효한 JSON 이 아니다.
+    실제로 /api/macro 가 NaN 을 뱉어 매크로·캘린더가 조용히 안 떴다."""
+    print("\n[9] API 응답이 유효한 JSON 인가 (NaN/Infinity)")
+    try:
+        import urllib.request
+    except Exception:
+        print("  --    확인 불가")
+        return
+    paths = ["/api/macro", "/api/market", "/api/news", "/api/session"]
+    alive = False
+    for p in paths:
+        try:
+            with urllib.request.urlopen("http://127.0.0.1:8770" + p, timeout=20) as r:
+                body = r.read().decode("utf-8", "replace")
+            alive = True
+        except Exception:
+            continue
+        bad = [t for t in ("NaN", "Infinity", "-Infinity") if
+               re.search(r"[:\[,]\s*-?" + t + r"\b", body)]
+        _say(not bad, p, "NaN/Infinity 포함 — 브라우저가 파싱 못 함" if bad else "정상")
+    if not alive:
+        print("  --    서버가 꺼져 있어 건너뜀 (python server.py 후 다시 실행)")
+
+
 def check_gitignore():
     """.gitignore 는 **줄 맨 앞의 # 만** 주석이다. 꼬리 주석을 붙이면 패턴에 섞여
     규칙이 통째로 무효가 된다. 실제로 update_config.json 이 이것 때문에
@@ -205,6 +231,7 @@ def main():
     check_encoding()
     check_bat()
     check_gitignore()
+    check_json_nan()
     print("\n" + "=" * 60)
     if problems:
         print(f"  문제 {len(problems)}건 — 배포하면 안 됩니다")

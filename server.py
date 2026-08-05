@@ -658,8 +658,10 @@ def api_macro():
     if _MACROCACHE["d"] and _t.time() - _MACROCACHE["t"] < 180:
         return jsonify(_MACROCACHE["d"])
     try:
-        from macro_cal import macro_snapshot, calendar_events
-        out = {"macro": macro_snapshot(), "calendar": calendar_events(),
+        from macro_cal import macro_snapshot, calendar as _cal
+        c = _cal()
+        # calendar 는 예전처럼 **목록**으로 유지(기존 화면 호환), 나머지는 cal 에 담는다
+        out = {"macro": macro_snapshot(), "calendar": c.get("events") or [], "cal": c,
                "updated": __import__("datetime").datetime.now().strftime("%H:%M")}
         _MACROCACHE["d"] = out; _MACROCACHE["t"] = _t.time()
         return jsonify(out)
